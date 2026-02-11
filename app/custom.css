@@ -1,0 +1,4 @@
+.required::after {
+  content: "*";
+  color: #ef4444; /* Tailwind red-500 */
+}

@@ -1,0 +1,192 @@
+"use client"
+
+import { ChevronRight, type LucideIcon } from "lucide-react"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
+
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  useSidebar,
+} from "@/components/ui/sidebar"
+
+export function NavMain({
+  items,
+}: {
+  items: {
+    title: string
+    url?: string
+    icon?: LucideIcon
+    isActive?: boolean
+    items?: {
+      title: string
+      url?: string
+      items?: {
+        title: string
+        url: string
+      }[]
+    }[]
+  }[]
+}) {
+  const pathname = usePathname()
+  const { state: sidebarState } = useSidebar()
+
+  const isUrlActive = (url?: string) => {
+    if (!url) return false
+    return pathname === url || pathname.startsWith(url + '/')
+  }
+
+  const isGroupActive = (item: any): boolean => {
+    if (isUrlActive(item.url)) return true
+    if (item.items) {
+      return item.items.some((subItem: any) => {
+        if (isUrlActive(subItem.url)) return true
+        if (subItem.items) {
+          return subItem.items.some((nestedItem: any) => isUrlActive(nestedItem.url))
+        }
+        return false
+      })
+    }
+    return false
+  }
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarMenu>
+        {items.map((item) => {
+          const groupActive = isGroupActive(item)
+
+          if (!item.items) {
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  isActive={isUrlActive(item.url)}
+                >
+                  <Link href={item.url || "#"}>
+                    {item.icon && <item.icon />}
+                    <span className="truncate">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          }
+
+          if (sidebarState === 'collapsed') {
+            return (
+              <DropdownMenu key={item.title}>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton tooltip={item.title} isActive={groupActive}>
+                    {item.icon && <item.icon />}
+                    <span className="sr-only">{item.title}</span>
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start" sideOffset={10}>
+                  <div className="p-2 font-medium text-sm">{item.title}</div>
+                  {item.items.map((subItem) =>
+                    subItem.items ? (
+                      <DropdownMenuSub key={subItem.title}>
+                        <DropdownMenuSubTrigger>
+                          <span>{subItem.title}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          {subItem.items.map((nestedItem) => (
+                            <DropdownMenuItem key={nestedItem.title} asChild>
+                              <Link href={nestedItem.url}>{nestedItem.title}</Link>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    ) : (
+                      <DropdownMenuItem key={subItem.title} asChild>
+                        <Link href={subItem.url!}>{subItem.title}</Link>
+                      </DropdownMenuItem>
+                    )
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }
+
+          return (
+            <Collapsible
+              key={item.title}
+              asChild
+              defaultOpen={groupActive}
+              className="group/collapsible"
+            >
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton tooltip={item.title} isActive={groupActive}>
+                    {item.icon && <item.icon />}
+                    <span className="truncate">{item.title}</span>
+                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {item.items?.map((subItem) => (
+                      <SidebarMenuSubItem key={subItem.title}>
+                        {subItem.items ? (
+                          <Collapsible>
+                            <CollapsibleTrigger asChild>
+                              <SidebarMenuSubButton isActive={isUrlActive(subItem.url)}>
+                                <span className="truncate">{subItem.title}</span>
+                                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                              </SidebarMenuSubButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <SidebarMenuSub>
+                                {subItem.items.map((nestedItem) => (
+                                  <SidebarMenuSubItem key={nestedItem.title}>
+                                    <SidebarMenuSubButton asChild isActive={isUrlActive(nestedItem.url)}>
+                                      <a href={nestedItem.url}>
+                                        <span className="truncate">{nestedItem.title}</span>
+                                      </a>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                ))}
+                              </SidebarMenuSub>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ) : (
+                          <SidebarMenuSubButton asChild isActive={isUrlActive(subItem.url)}>
+                            <a href={subItem.url}>
+                              <span className="truncate">{subItem.title}</span>
+                            </a>
+                          </SidebarMenuSubButton>
+                        )}
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+          )
+        })}
+      </SidebarMenu>
+    </SidebarGroup>
+  )
+}
