@@ -1,4 +1,4 @@
-import { BrandList } from "@/features/brands/components/brand-list"
+import { BrandList } from "@/features/brands"
 
 export default function BrandsPage() {
   return (

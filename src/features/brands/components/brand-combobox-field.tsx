@@ -14,6 +14,7 @@ interface BrandComboboxFieldProps<TFieldValues extends FieldValues> {
   placeholder?: string
   required?: boolean
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function BrandComboboxField<TFieldValues extends FieldValues>({
@@ -23,6 +24,7 @@ export function BrandComboboxField<TFieldValues extends FieldValues>({
   placeholder = "Select Brand",
   required = false,
   disabled = false,
+  readOnly = false,
 }: BrandComboboxFieldProps<TFieldValues>) {
   const { setValue, trigger } = useFormContext<TFieldValues>()
   const { openModal } = useBrandModal()
@@ -60,6 +62,7 @@ export function BrandComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

@@ -23,9 +23,15 @@ interface ModelFormProps {
   initialData?: Model | null
   onSuccess?: (data: Model) => void
   isViewMode?: boolean
+  brandId?: string
 }
 
-export function ModelForm({ initialData, onSuccess, isViewMode: initialIsViewMode = false }: ModelFormProps) {
+export function ModelForm({
+  initialData,
+  onSuccess,
+  isViewMode: initialIsViewMode = false,
+  brandId,
+}: ModelFormProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { mutate: createModel, isPending: isCreating } = useCreateModel()
@@ -43,7 +49,7 @@ export function ModelForm({ initialData, onSuccess, isViewMode: initialIsViewMod
     resolver: zodResolver(modelSchema),
     defaultValues: initialData || {
       name: "",
-      brand_id: "",
+      brand_id: brandId || "",
       isActive: true,
     },
   })
@@ -61,39 +67,33 @@ export function ModelForm({ initialData, onSuccess, isViewMode: initialIsViewMod
     }
   }
 
-  function onSubmit(data: ModelFormValues) {
+  const onSubmit = (data: ModelFormValues) => {
+    const handleSuccess = (model: Model) => {
+      toast.success(`Model ${isEditMode ? "updated" : "created"} successfully`)
+      queryClient.invalidateQueries({ queryKey: ["models"] })
+      if (onSuccess) {
+        onSuccess(model)
+      } else {
+        router.push(MODELS_BASE_HREF)
+      }
+    }
+
+    const handleError = (error: Error) => {
+      toast.error(`Failed to ${isEditMode ? "update" : "create"} model: ${error.message}`)
+    }
+
     if (isEditMode && initialData) {
       updateModel(
         { id: initialData.id, data },
         {
-          onSuccess: (updatedModel: Model) => {
-            toast.success("Model updated successfully")
-            queryClient.invalidateQueries({ queryKey: ["models"] })
-            if (onSuccess) {
-              onSuccess(updatedModel)
-            } else {
-              router.push(MODELS_BASE_HREF)
-            }
-          },
-          onError: (error) => {
-            toast.error("Failed to update model: " + error.message)
-          },
+          onSuccess: handleSuccess,
+          onError: handleError,
         }
       )
     } else {
       createModel(data, {
-        onSuccess: (newModel) => {
-          toast.success("Model created successfully")
-          queryClient.invalidateQueries({ queryKey: ["models"] })
-          if (onSuccess) {
-            onSuccess(newModel)
-          } else {
-            router.push(MODELS_BASE_HREF)
-          }
-        },
-        onError: (error) => {
-          toast.error("Failed to create model: " + error.message)
-        },
+        onSuccess: handleSuccess,
+        onError: handleError,
       })
     }
   }
@@ -121,7 +121,7 @@ export function ModelForm({ initialData, onSuccess, isViewMode: initialIsViewMod
             control={form.control}
             name="brand_id"
             required
-            disabled={isViewMode}
+            readOnly={isViewMode || !!brandId}
           />
           <CheckboxField
             control={form.control}

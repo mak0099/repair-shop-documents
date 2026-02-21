@@ -9,7 +9,7 @@ let brands: Brand[] = [...mockBrands]
 
 export const brandHandlers = [
   // Get all brands
-  http.get("https://api.example.com/brands", ({ request }) => {
+  http.get("*/brands", ({ request }) => {
     const url = new URL(request.url)
     const search = url.searchParams.get("search") || ""
     const status = url.searchParams.get("status") // 'active', 'inactive', 'all'
@@ -43,7 +43,7 @@ export const brandHandlers = [
   }),
 
   // Create Brand
-  http.post("https://api.example.com/brands", async ({ request }) => {
+  http.post("*/brands", async ({ request }) => {
     try {
       const contentType = request.headers.get("content-type") || ""
       let data: BrandFormValues
@@ -87,7 +87,7 @@ export const brandHandlers = [
   }),
 
   // Update Brand
-  http.patch("https://api.example.com/brands/:id", async ({ request, params }) => {
+  http.patch("*/brands/:id", async ({ request, params }) => {
     try {
       const { id } = params
       const brandIndex = brands.findIndex((b) => b.id === id)
@@ -138,7 +138,7 @@ export const brandHandlers = [
   }),
 
   // DELETE a brand
-  http.delete("https://api.example.com/brands/:id", ({ params }) => {
+  http.delete("*/brands/:id", ({ params }) => {
     const { id } = params
     brands = brands.filter((b) => b.id !== id)
     return new HttpResponse(null, { status: 204 })

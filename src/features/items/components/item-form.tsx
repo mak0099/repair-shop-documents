@@ -1,206 +1,167 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useForm, FieldErrors } from "react-hook-form"
-import { useQueryClient } from "@tanstack/react-query"
+import { FormProvider, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader2, Info, Cpu, ClipboardCheck, Wallet } from "lucide-react"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
-import { z } from "zod"
 
 import { TextField } from "@/components/forms/text-field"
 import { TextareaField } from "@/components/forms/textarea-field"
 import { CheckboxField } from "@/components/forms/checkbox-field"
+import { RadioGroupField } from "@/components/forms/radio-group-field"
+import { ComboboxWithAdd } from "@/components/forms/combobox-with-add-field"
 import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
-import { RadioGroupField } from "@/components/forms/radio-group-field"
-import { BrandComboboxField } from "@/features/brands"
-import { ModelComboboxField } from "@/features/models"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { itemSchema, ItemFormValues, Item } from "../item.schema"
-import { useCreateItem, useUpdateItem } from "../item.api"
-import { TYPE_OPTIONS } from "../item.constants"
+import { itemSchema, ItemFormData } from "../item.schema"
+import { useCreateItem } from "../item.api"
+import { AttributeSelectField } from "./attribute-select-field"
 
-const ITEMS_BASE_HREF = "/dashboard/inventory"
-
-const itemFormSchema = itemSchema.extend({
-  specifications: z
-    .string()
-    .transform((str, ctx) => {
-      try {
-        const parsed = JSON.parse(str)
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Specifications must be a JSON object.",
-          })
-          return z.NEVER
-        }
-        return parsed
-      } catch (e) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Invalid JSON format.",
-        })
-        return z.NEVER
-      }
-    })
-    .optional()
-    .default({}),
-})
-
-type ItemFormSchemaValues = z.infer<typeof itemFormSchema>
-
-interface ItemFormProps {
-  initialData?: Item | null
-  onSuccess?: (data: Item) => void
-  isViewMode?: boolean
-}
-
-export function ItemForm({ initialData, onSuccess, isViewMode: initialIsViewMode = false }: ItemFormProps) {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const { mutate: createItem, isPending: isCreating } = useCreateItem()
-  const { mutate: updateItem, isPending: isUpdating } = useUpdateItem()
-
-  const [mode, setMode] = useState<"view" | "edit" | "create">(
-    initialIsViewMode ? "view" : initialData ? "edit" : "create"
-  )
-  const isViewMode = mode === "view"
-
-  const isPending = isCreating || isUpdating
-  const isEditMode = !!initialData && mode !== "create"
-
-  const form = useForm<ItemFormSchemaValues>({
-    resolver: zodResolver(itemFormSchema),
-    defaultValues: initialData
-      ? {
-          ...initialData,
-          specifications: initialData.specifications ? JSON.stringify(initialData.specifications, null, 2) : "{}",
-        }
-      : {
-          name: "",
-          sku: "",
-          type: "PRODUCT",
-          brand_id: "",
-          model_id: undefined,
-          price: 0,
-          cost_price: 0,
-          stock_qty: 0,
-          specifications: "{}",
-          isActive: true,
-        },
+export function ItemForm({ onSuccess }: { onSuccess?: () => void }) {
+  const { mutate: createItem, isPending } = useCreateItem()
+  
+  const form = useForm<ItemFormData>({
+    resolver: zodResolver(itemSchema),
+    defaultValues: {
+      isTouchScreen: false,
+      isSolidDevice: false,
+      initialStock: 0,
+      isActive: true,
+      condition: "Used",
+      isBoxIncluded: "No",
+      isChargerIncluded: "No",
+      addToKhata: "No"
+    }
   })
 
-  const onFormError = (errors: FieldErrors<ItemFormSchemaValues>) => {
-    console.error("Item form validation errors:", errors)
-    toast.error("Please fill all required fields correctly.")
-  }
+  const { control, watch, handleSubmit } = form
+  const isSerialized = watch("imei") // Contextual visibility
 
-  const handleCancel = () => {
-    if (onSuccess) {
-      // In view mode, onSuccess is used to close the modal.
-      // We pass initialData to ensure any parent state is not cleared.
-      onSuccess(initialData as Item)
-    } else {
-      router.push(ITEMS_BASE_HREF)
-    }
-  }
-
-  function onSubmit(data: ItemFormValues) {
-    if (isEditMode && initialData) {
-      updateItem(
-        { id: initialData.id, data },
-        {
-          onSuccess: (updatedItem: Item) => {
-            toast.success("Item updated successfully")
-            queryClient.invalidateQueries({ queryKey: ["items"] })
-            if (onSuccess) {
-              onSuccess(updatedItem)
-            } else {
-              router.push(ITEMS_BASE_HREF)
-            }
-          },
-          onError: (error) => {
-            toast.error("Failed to update item: " + error.message)
-          },
-        }
-      )
-    } else {
-      createItem(data, {
-        onSuccess: (newItem) => {
-          toast.success("Item created successfully")
-          queryClient.invalidateQueries({ queryKey: ["items"] })
-          if (onSuccess) {
-            onSuccess(newItem)
-          } else {
-            router.push(ITEMS_BASE_HREF)
-          }
-        },
-        onError: (error) => {
-          toast.error("Failed to create item: " + error.message)
-        },
-      })
-    }
+  const onSubmit = (data: ItemFormData) => {
+    createItem(data as any, {
+      onSuccess: () => {
+        toast.success("Record saved successfully")
+        onSuccess?.()
+      }
+    })
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="relative p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {isViewMode && (
-          <div className="absolute top-4 right-4 z-10">
-            <Button size="sm" type="button" onClick={(e) => { e.preventDefault(); setMode("edit"); }}>
-              Edit
+    <FormProvider {...form}>
+      <Form {...form}>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full bg-slate-50/50 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              {/* Column 1: Core Identity & Financials */}
+              <div className="space-y-4">
+                <Card className="shadow-sm border-t-2 border-t-blue-600">
+                  <CardHeader className="py-2.5 px-4 border-b bg-white">
+                    <CardTitle className="text-[11px] uppercase font-bold flex items-center gap-2 text-slate-700">
+                      <Wallet className="h-4 w-4 text-blue-600" /> Basic Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-3">
+                    <TextField control={control} name="name" label="Product / Title" required inputClassName="h-9" />
+                    <ComboboxWithAdd control={control} name="categoryId" label="Device Category" options={[]} required />
+                    <div className="grid grid-cols-2 gap-3">
+                      <ComboboxWithAdd control={control} name="brandId" label="Brand" options={[]} required />
+                      <ComboboxWithAdd control={control} name="modelId" label="Model" options={[]} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <ComboboxWithAdd control={control} name="deviceType" label="Device Type" options={[]} />
+                      <TextField control={control} name="sku" label="System SKU" readOnly inputClassName="h-9 bg-slate-100" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                      <TextField control={control} name="purchasePrice" label="Purchase Price" type="number" required inputClassName="h-9" />
+                      <TextField control={control} name="salePrice" label="Sale Price" type="number" required inputClassName="h-9" />
+                    </div>
+                    <ComboboxWithAdd control={control} name="supplierId" label="Supplier" options={[]} />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Column 2: Hardware Specifications */}
+              <div className="space-y-4">
+                <Card className="shadow-sm border-t-2 border-t-indigo-600">
+                  <CardHeader className="py-2.5 px-4 border-b bg-white">
+                    <CardTitle className="text-[11px] uppercase font-bold flex items-center gap-2 text-slate-700">
+                      <Cpu className="h-4 w-4 text-indigo-600" /> Technical Specs
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-3">
+                    <TextField control={control} name="imei" label="IMEI / Serial No" placeholder="Unique tracking ID" inputClassName="h-9 border-indigo-200" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <AttributeSelectField control={control} name="ram" label="RAM" attributeName="RAM" />
+                      <AttributeSelectField control={control} name="rom" label="ROM" attributeName="ROM" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <AttributeSelectField control={control} name="color" label="Color" attributeName="Color" />
+                      <TextField control={control} name="processor" label="Processor" inputClassName="h-9" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <TextField control={control} name="batteryHealth" label="Battery Health" inputClassName="h-9" />
+                      <TextField control={control} name="grade" label="Grade" inputClassName="h-9" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <TextField control={control} name="camera" label="Camera" inputClassName="h-9" />
+                      <TextField control={control} name="size" label="Screen Size" inputClassName="h-9" />
+                    </div>
+                    <TextareaField control={control} name="note" label="Technical Notes" className="min-h-[60px] text-xs" />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Column 3: Logistics & Options */}
+              <div className="space-y-4">
+                <Card className="shadow-sm border-t-2 border-t-emerald-600">
+                  <CardHeader className="py-2.5 px-4 border-b bg-white">
+                    <CardTitle className="text-[11px] uppercase font-bold flex items-center gap-2 text-slate-700">
+                      <ClipboardCheck className="h-4 w-4 text-emerald-600" /> Condition & Logistics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="bg-slate-50 p-3 rounded-md border space-y-2">
+                      <RadioGroupField control={control} name="condition" label="Product Condition" options={[{label: "Used", value: "Used"}, {label: "New", value: "New"}]} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <RadioGroupField control={control} name="isBoxIncluded" label="Box?" options={[{label: "Yes", value: "Yes"}, {label: "No", value: "No"}]} />
+                        <RadioGroupField control={control} name="isChargerIncluded" label="Charger?" options={[{label: "Yes", value: "Yes"}, {label: "No", value: "No"}]} />
+                      </div>
+                      <CheckboxField control={control} name="isTouchScreen" label="Touch Screen" />
+                      <CheckboxField control={control} name="isSolidDevice" label="Is Solid Device" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <ComboboxWithAdd control={control} name="boxNumberId" label="Box Number" options={[]} />
+                      <TextField control={control} name="homeStock" label="Home Stock" inputClassName="h-9" />
+                    </div>
+
+                    <div className="p-3 bg-amber-50 border border-amber-100 rounded-md">
+                      <RadioGroupField control={control} name="addToKhata" label="Add to Khata?" options={[{label: "Yes", value: "Yes"}, {label: "No", value: "No"}]} />
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                       <TextareaField control={control} name="description" label="Web Description" className="min-h-[80px] text-xs" />
+                       {!isSerialized && (
+                        <TextField control={control} name="initialStock" label="Opening Stock Qty" type="number" inputClassName="h-9" />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-shrink-0 flex justify-end gap-3 p-4 border-t bg-white">
+            <Button variant="ghost" type="button" className="text-slate-500 font-bold" onClick={() => form.reset()}>RESET</Button>
+            <Button type="submit" className="px-16 bg-slate-900 hover:bg-black text-white font-bold h-10" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              SAVE PRODUCT
             </Button>
           </div>
-        )}
-        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <TextField control={form.control} name="name" label="Item Name" required readOnly={isViewMode} placeholder="e.g., iPhone 15 Pro" />
-          <TextField control={form.control} name="sku" label="SKU/Barcode" required readOnly={isViewMode} placeholder="e.g., APL-IP15P-256" />
-        </div>
-
-        <RadioGroupField control={form.control} name="type" label="Type" options={TYPE_OPTIONS.filter((o) => o.value !== "all")} required disabled={isViewMode} />
-
-        <BrandComboboxField control={form.control} name="brand_id" required disabled={isViewMode} />
-
-        <ModelComboboxField control={form.control} name="model_id" disabled={isViewMode} />
-
-        <TextField control={form.control} name="price" label="Price" type="number" required readOnly={isViewMode} placeholder="e.g., 999.99" />
-        <TextField control={form.control} name="cost_price" label="Cost Price" type="number" required readOnly={isViewMode} placeholder="e.g., 799.00" />
-        <TextField control={form.control} name="stock_qty" label="Stock Quantity" type="number" readOnly={isViewMode} placeholder="e.g., 100" />
-
-        <div className="md:col-span-2">
-          <TextareaField
-            control={form.control}
-            name="specifications"
-            label="Specifications (JSON)"
-            placeholder='{ "color": "Blue", "storage": "256GB" }'
-            rows={5}
-            readOnly={isViewMode}
-          />
-        </div>
-
-        <CheckboxField control={form.control} name="isActive" label="Is Active?" className="rounded-md border p-3" disabled={isViewMode} />
-
-        <div className="md:col-span-2 flex justify-end gap-2 pt-4">
-          {isViewMode ? (
-            <Button variant="outline" type="button" onClick={handleCancel}>
-              Close
-            </Button>
-          ) : (
-            <>
-              <Button variant="outline" type="button" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? "Save Changes" : "Save Item"}
-              </Button>
-            </>
-          )}
-        </div>
-      </form>
-    </Form>
+        </form>
+      </Form>
+    </FormProvider>
   )
 }

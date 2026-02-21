@@ -1,0 +1,101 @@
+"use client"
+
+import { useForm, useFieldArray, FormProvider } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Plus, Trash2, Save, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+
+import { Form } from "@/components/ui/form"
+import { Button } from "@/components/ui/button"
+import { TextField } from "@/components/forms/text-field"
+import { attributeSchema, Attribute } from "../attribute.schema"
+import { useUpdateAttribute } from "../attribute.api";
+
+export function AttributeForm({ initialData, onSuccess }: { initialData?: Attribute, onSuccess: (data: Attribute) => void }) {
+  const { mutate: updateAttribute, isPending } = useUpdateAttribute()
+
+  const form = useForm<Attribute>({
+    resolver: zodResolver(attributeSchema),
+    defaultValues: initialData || { name: "", values: [] }
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "values"
+  })
+
+  function onSubmit(data: Attribute) {
+    if (!initialData?.id) {
+      toast.error("Cannot update attribute without an ID.");
+      return;
+    }
+    updateAttribute({ id: initialData.id, data }, {
+      onSuccess: (updatedAttribute) => {
+        toast.success(`"${updatedAttribute.name}" values updated!`)
+        onSuccess(updatedAttribute)
+      },
+      onError: (err) => toast.error(err.message)
+    })
+  }
+
+  return (
+    <FormProvider {...form}>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <div className="bg-slate-50 p-3 rounded-md border border-dashed text-center">
+            <span className="text-xs font-bold uppercase text-slate-500 tracking-widest">
+              Managing Values for: {initialData?.name}
+            </span>
+          </div>
+
+          <div className="max-h-[350px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            {fields.map((field, index) => (
+              <div key={field.id} className="flex gap-2 items-end group animate-in fade-in slide-in-from-top-1">
+                <div className="flex-1">
+                  <TextField 
+                    control={form.control} 
+                    name={`values.${index}.value`} 
+                    label={index === 0 ? "Value Name" : ""} 
+                    placeholder="e.g. 8GB, Golden, etc." 
+                    inputClassName="h-9"
+                  />
+                </div>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => remove(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+
+            {fields.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground text-sm border rounded-md border-dashed">
+                No values added yet.
+              </div>
+            )}
+          </div>
+
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full border-dashed h-9 text-xs" 
+            onClick={() => append({ value: "" })}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add New {initialData?.name} Value
+          </Button>
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button type="submit" className="flex-1 bg-slate-900" disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </FormProvider>
+  )
+}

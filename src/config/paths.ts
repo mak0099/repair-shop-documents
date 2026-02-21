@@ -1,6 +1,9 @@
 export const ACCEPTANCES_BASE_HREF = "/dashboard/acceptances"
 export const ACCEPTANCES_ADD_HREF = `${ACCEPTANCES_BASE_HREF}/add`
 export const CUSTOMERS_BASE_HREF = "/dashboard/system/customers"
-export const CUSTOMERS_ADD_HREF = `${CUSTOMERS_BASE_HREF}/add`
-
-export const BRANDS_BASE_HREF = "/dashboard/ecommerce/brands"
+export const BRANDS_BASE_HREF = "/dashboard/inventory/brands"
+export const BOX_NUMBERS_BASE_HREF = "/dashboard/system/box-numbers"
+export const CATEGORIES_BASE_HREF = "/dashboard/inventory/categories"
+export const ITEMS_BASE_HREF = "/dashboard/inventory/items"
+export const STOCK_ADJUSTMENTS_BASE_HREF = "/dashboard/inventory/stock-adjustments"
+export const BARCODE_GENERATOR_HREF = "/dashboard/inventory/barcode-generator"

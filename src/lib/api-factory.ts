@@ -65,7 +65,8 @@ export function createApiHooksFor<
         return response.data
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: resourceQueryKey })
+        queryClient.invalidateQueries({ queryKey: resourceQueryKey });
+        queryClient.invalidateQueries({ queryKey: [`${resourceName}-options`] });
       },
     })
   }
@@ -90,7 +91,8 @@ export function createApiHooksFor<
         return response.data
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: resourceQueryKey })
+        queryClient.invalidateQueries({ queryKey: resourceQueryKey });
+        queryClient.invalidateQueries({ queryKey: [`${resourceName}-options`] });
       },
     })
   }
@@ -103,8 +105,9 @@ export function createApiHooksFor<
         return response.data
       },
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ queryKey: resourceQueryKey })
-        queryClient.invalidateQueries({ queryKey: [...resourceQueryKey, data.id] })
+        queryClient.invalidateQueries({ queryKey: resourceQueryKey });
+        queryClient.invalidateQueries({ queryKey: [...resourceQueryKey, data.id] });
+        queryClient.invalidateQueries({ queryKey: [`${resourceName}-options`] });
       },
     })
   }
@@ -134,8 +137,9 @@ export function createApiHooksFor<
         return response.data
       },
       onSuccess: (data) => {
-        queryClient.invalidateQueries({ queryKey: resourceQueryKey })
-        queryClient.invalidateQueries({ queryKey: [...resourceQueryKey, data.id] })
+        queryClient.invalidateQueries({ queryKey: resourceQueryKey });
+        queryClient.invalidateQueries({ queryKey: [...resourceQueryKey, data.id] });
+        queryClient.invalidateQueries({ queryKey: [`${resourceName}-options`] });
       },
     })
   }
@@ -152,6 +156,23 @@ export function createApiHooksFor<
     })
   }
 
+  const useGetOptions = <TOption extends { id: string }>(
+    params: Record<string, any> = {},
+    queryOptions: { enabled?: boolean } = {},
+  ): UseQueryResult<TOption[], Error> => {
+    return useQuery({
+      queryKey: [`${resourceName}-options`, params],
+      queryFn: async () => {
+        const response = await apiClient.get<TOption[]>(`/${resourceName}/options`, {
+          params,
+        })
+        return response.data
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      ...queryOptions,
+    })
+  }
+
   return {
     useGetList,
     useGetOne,
@@ -160,5 +181,6 @@ export function createApiHooksFor<
     useUpdate,
     useUpdateWithFormData,
     useDelete,
+    useGetOptions,
   }
 }

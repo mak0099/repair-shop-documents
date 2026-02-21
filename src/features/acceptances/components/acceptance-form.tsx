@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import Image from "next/image"
 import { FormProvider, useForm } from "react-hook-form"
@@ -83,9 +83,16 @@ export function AcceptanceForm({
       },
   })
 
-  const { control, watch, setValue } = form
+  const { control, watch, setValue, formState } = form
   const pinUnlock = watch("pin_unlock")
   const urgent = watch("urgent")
+  const brandId = watch("brand_id")
+
+  useEffect(() => {
+    if (formState.dirtyFields.brand_id) {
+      setValue("model_id", "" as any, { shouldDirty: true })
+    }
+  }, [brandId, setValue, formState.dirtyFields.brand_id])
 
   const handlePhotoUpload = (fieldName: string, file: File | null) => {
     if (file) {
@@ -168,15 +175,21 @@ export function AcceptanceForm({
                     inputClassName="h-10"
                     readOnly={isViewMode}
                   />
-                  <BrandComboboxField name="brand_id" control={control} required disabled={isViewMode} />
-                  <ModelComboboxField name="model_id" control={control} required disabled={isViewMode} />
+                  <BrandComboboxField name="brand_id" control={control} required readOnly={isViewMode} />
+                  <ModelComboboxField
+                    name="model_id"
+                    control={control}
+                    brandId={brandId}
+                    required
+                    readOnly={isViewMode || !brandId}
+                  />
                   <MasterSettingComboboxField
                     control={control}
                     name="color"
                     type="COLOR"
                     label="Color"
                     placeholder="Select Color"
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
                   <MasterSettingComboboxField
                     control={control}
@@ -184,7 +197,7 @@ export function AcceptanceForm({
                     type="ACCESSORY"
                     label="Accessories"
                     placeholder="Select accessories"
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
                   <MasterSettingComboboxField
                     control={control}
@@ -193,7 +206,7 @@ export function AcceptanceForm({
                     label="Device Type"
                     placeholder="Select device type"
                     required
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
                   <MasterSettingComboboxField
                     control={control}
@@ -202,7 +215,7 @@ export function AcceptanceForm({
                     label="Current Status"
                     placeholder="Select status"
                     required
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
                   <TextareaField
                     control={control}
@@ -229,7 +242,7 @@ export function AcceptanceForm({
                     name="created_date"
                     label="Created Date"
                     required
-                    disabled={(date: Date) =>
+                    readOnly={(date: Date) =>
                       isViewMode || date > new Date() || date < new Date("1900-01-01")
                     }
                   />
@@ -254,7 +267,7 @@ export function AcceptanceForm({
                     label="Technician"
                     placeholder="Select technician"
                     required
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
                   <MasterSettingComboboxField
                     control={control}
@@ -262,14 +275,14 @@ export function AcceptanceForm({
                     type="WARRANTY"
                     label="Warranty"
                     placeholder="Choose an option"
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
                   <ItemComboboxField
                     control={control}
                     name="replacement_device_id"
                     label="Replacement Device"
                     placeholder="Select replacement device"
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
                   <TextField
                     control={control}
@@ -309,9 +322,9 @@ export function AcceptanceForm({
                     required
                     name="important_information"
                     label="Important Information"
-                    disabled={isViewMode}
+                    readOnly={isViewMode}
                   />
-                  <RadioGroupField control={control} required name="pin_unlock" label="Pin Unlock" disabled={isViewMode} />
+                  <RadioGroupField control={control} required name="pin_unlock" label="Pin Unlock" readOnly={isViewMode} />
                   {pinUnlock === "Yes" && (
                     <TextField
                       control={control}
@@ -329,12 +342,12 @@ export function AcceptanceForm({
                       name="urgent_date"
                       label="Urgent Date"
                       required
-                      disabled={(date) =>
+                      readOnly={(date) =>
                         isViewMode || date < new Date(new Date().setHours(0, 0, 0, 0))
                       }
                     />
                   )}
-                  <RadioGroupField control={control} required name="quote" label="Quote" disabled={isViewMode} />
+                  <RadioGroupField control={control} required name="quote" label="Quote" readOnly={isViewMode} />
                 </div>
                 <div className="bg-white p-4 rounded-md shadow border">
                   <div className="grid grid-cols-2 gap-4">
@@ -406,7 +419,7 @@ export function AcceptanceForm({
                 <Button variant="outline" type="button" onClick={handleCancel}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" readOnly={isPending}>
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isEditMode ? "Save Changes" : "Save Acceptance"}
                 </Button>

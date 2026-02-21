@@ -15,6 +15,7 @@ interface CategoryComboboxFieldProps<TFieldValues extends FieldValues> {
   required?: boolean
   parentId?: string
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function CategoryComboboxField<TFieldValues extends FieldValues>({
@@ -25,6 +26,7 @@ export function CategoryComboboxField<TFieldValues extends FieldValues>({
   required = false,
   parentId,
   disabled = false,
+  readOnly = false,
 }: CategoryComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useCategoryModal()
@@ -62,6 +64,7 @@ export function CategoryComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

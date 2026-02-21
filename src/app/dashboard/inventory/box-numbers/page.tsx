@@ -1,23 +1,9 @@
-"use client"
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { BoxNumberList } from "@/features/box-numbers"
 
 export default function BoxNumbersPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div>
-        <h1 className="text-3xl font-bold">Box Numbers</h1>
-        <p className="text-muted-foreground">Manage box number assignments</p>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Box Management</CardTitle>
-          <CardDescription>Track and assign box numbers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>This page is under development. Box number management will be implemented here.</p>
-        </CardContent>
-      </Card>
+      <BoxNumberList />
     </div>
   )
 }

@@ -14,6 +14,7 @@ interface CustomerComboboxFieldProps<TFieldValues extends FieldValues> {
   placeholder?: string
   required?: boolean
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function CustomerComboboxField<TFieldValues extends FieldValues>({
@@ -23,6 +24,7 @@ export function CustomerComboboxField<TFieldValues extends FieldValues>({
   placeholder = "Select Customer",
   required = false,
   disabled = false,
+  readOnly = false,
 }: CustomerComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useCustomerModal()
@@ -60,6 +62,7 @@ export function CustomerComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

@@ -4,123 +4,76 @@ import { useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 
 import { ResourceListPage } from "@/components/shared/resource-list-page"
-import { ResourceActions } from "@/components/shared/resource-actions"
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header"
-import { DateCell, StatusCell } from "@/components/shared/data-table-cells"
-
-import {
-  useItems,
-  useDeleteItem,
-  useDeleteManyItems,
-  usePartialUpdateItem,
-  useUpdateManyItems,
-} from "../item.api"
-import { Item } from "../item.schema"
+import { Badge } from "@/components/ui/badge"
+import { useItems, useDeleteItem, useDeleteManyItems } from "../item.api"
+import { Item, ItemVariant } from "../item.schema"
 import { useItemModal } from "../item-modal-context"
-import { STATUS_OPTIONS, TYPE_OPTIONS } from "../item.constants"
-
-const INITIAL_FILTERS = {
-  search: "",
-  page: 1,
-  pageSize: 10,
-  status: "active",
-  type: "all",
-}
+import { ResourceActions } from "@/components/shared/resource-actions"
 
 export function ItemList() {
-  const deleteItemMutation = useDeleteItem()
-  const updateItemMutation = usePartialUpdateItem()
-  const bulkDeleteMutation = useDeleteManyItems()
-  const bulkStatusUpdateMutation = useUpdateManyItems()
   const { openModal } = useItemModal()
+  const deleteMutation = useDeleteItem()
+  const bulkDeleteMutation = useDeleteManyItems()
 
-  const columns: ColumnDef<Item>[] = useMemo(
-    () => [
-      {
-        accessorKey: "name",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
-        cell: ({ row }) => (
-          <div className="font-medium cursor-pointer hover:underline" onClick={() => openModal({ initialData: row.original, isViewMode: true })}>
-            {row.getValue("name")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "sku",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="SKU" />,
-      },
-      {
-        accessorKey: "type",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
-      },
-      {
-        accessorKey: "price",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Price" />,
-        cell: ({ row }) => `€${row.original.price.toFixed(2)}`,
-      },
-       {
-        accessorKey: "stock_qty",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Stock" />,
-      },
-      {
-        accessorKey: "isActive",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Active?" />,
-        cell: ({ row }) => <StatusCell isActive={row.original.isActive} />,
-      },
-      {
-        accessorKey: "createdAt",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
-        cell: ({ row }) => <DateCell date={row.original.createdAt} />,
-      },
-      {
-        id: "actions",
-        enableSorting: false,
-        enableHiding: false,
-        cell: ({ row }) => (
-          <ResourceActions
-            resource={row.original}
-            resourceName="Item"
-            resourceTitle={row.original.name}
-            onView={(item) => openModal({ initialData: item, isViewMode: true })}
-            onEdit={(item) => openModal({ initialData: item })}
-            deleteMutation={deleteItemMutation}
-            updateMutation={updateItemMutation}
-          />
-        ),
-      },
-    ],
-    [deleteItemMutation, updateItemMutation, openModal]
-  )
-
-  const filterDefinitions = [
+  const columns: ColumnDef<Item>[] = useMemo(() => [
     {
-      key: "status",
-      title: "Status",
-      options: STATUS_OPTIONS,
+      accessorKey: "name",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Product Name" />,
+      cell: ({ row }) => (
+        <div
+          className="font-medium cursor-pointer hover:underline"
+          onClick={() => openModal({ initialData: row.original, isViewMode: true })}
+        >
+          {row.original.name}
+        </div>
+      ),
     },
     {
-      key: "type",
-      title: "Type",
-      options: TYPE_OPTIONS,
+      accessorKey: "hasVariants",
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge variant={row.original.hasVariants ? "default" : "outline"}>
+          {row.original.hasVariants ? "Variable" : "Simple"}
+        </Badge>
+      )
     },
-  ]
+    {
+      id: "stock",
+      header: "Total Stock",
+      cell: ({ row }) => {
+        const total = Array.isArray(row.original.variants)
+          ? row.original.variants.reduce((acc, v) => acc + (v.stockQuantity || 0), 0)
+          : 0
+        return <span className="font-bold">{total}</span>
+      }
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <ResourceActions
+          resourceTitle={row.original.name} // Added resourceTitle for better confirmation messages
+          resource={row.original}
+          resourceName="Product"
+          onView={(item) => openModal({ initialData: item, isViewMode: true })}
+          onEdit={(item) => openModal({ initialData: item })}
+          deleteMutation={deleteMutation}
+        />
+      )
+    }
+  ], [openModal, deleteMutation])
 
   return (
-    <>
-      <ResourceListPage<Item, unknown>
-        title="Items"
-        resourceName="items"
-        description="Manage inventory items"
-        onAdd={() => openModal()}
-        addLabel="Add Item"
-        columns={columns}
-        useResourceQuery={useItems}
-        bulkDeleteMutation={bulkDeleteMutation}
-        bulkStatusUpdateMutation={bulkStatusUpdateMutation}
-        initialFilters={INITIAL_FILTERS}
-        searchPlaceholder="Search by name or SKU..."
-        filterDefinitions={filterDefinitions}
-      />
-    </>
+    <ResourceListPage<Item, unknown>
+      title="Products & Items"
+      description="Manage all your products, items, and their variants."
+      resourceName="items"
+      columns={columns}
+      useResourceQuery={useItems}
+      onAdd={() => openModal()}
+      addLabel="Add Product"
+      bulkDeleteMutation={bulkDeleteMutation}
+      searchPlaceholder="Search by product name..."
+    />
   )
 }

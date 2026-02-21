@@ -1,45 +1,62 @@
-import { delay, http, HttpResponse } from "msw"
+import { delay, http, HttpResponse } from "msw";
 
-import { applySort } from "@/mocks/mock-utils"
-import { Customer, CustomerFormValues } from "../customer.schema"
-import { mockCustomers } from "./customers.mock"
+import { applySort } from "@/mocks/mock-utils";
+import { Customer, CustomerFormValues } from "../customer.schema";
+import { mockCustomers } from "./customers.mock";
 
 // Mutable copy for mock operations
-let customers = [...mockCustomers]
+let customers = [...mockCustomers];
 
 export const customerHandlers = [
   // GET all customers with pagination and search
-  http.get("https://api.example.com/customers", async ({ request }) => {
-    await delay(500)
-    const url = new URL(request.url)
-    const page = Number(url.searchParams.get("page") || "1")
-    const pageSize = Number(url.searchParams.get("pageSize") || "10")
-    const search = url.searchParams.get("search")?.toLowerCase() || ""
-    const sort = url.searchParams.get("_sort")
-    const order = url.searchParams.get("_order")
-    const isDealer = url.searchParams.get("isDealer")
-    const branch = url.searchParams.get("branch")
-    const status = url.searchParams.get("status")
+  http.get("*/customers", async ({ request }) => {
+    await delay(500);
+    const url = new URL(request.url);
+    const search = url.searchParams.get("search") || "";
+    const status = url.searchParams.get("status"); // 'active', 'inactive', 'all'
+    const isDealer = url.searchParams.get("isDealer"); // 'true', 'false', 'all'
+    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const pageSize = parseInt(url.searchParams.get("pageSize") || "10", 10);
+    const sort = url.searchParams.get("_sort");
+    const order = url.searchParams.get("_order");
 
-    let filteredData = customers.filter((customer) => {
-      const searchMatch =
-        customer.name.toLowerCase().includes(search) ||
-        (customer.email || "").toLowerCase().includes(search) ||
-        (customer.mobile || "").toLowerCase().includes(search)
+    let filteredCustomers = customers;
 
-      const roleMatch = !isDealer || isDealer === "all" || customer.isDealer === (isDealer === "true")
-      const statusMatch = !status || status === "all" || (customer.isActive ? "active" : "inactive") === status
+    // Filter by search query
+    if (search) {
+      const lowercasedSearch = search.toLowerCase();
+      filteredCustomers = filteredCustomers.filter(
+        (customer) =>
+          customer.name.toLowerCase().includes(lowercasedSearch) ||
+          (customer.email || "").toLowerCase().includes(lowercasedSearch) ||
+          (customer.mobile || "").toLowerCase().includes(lowercasedSearch),
+      );
+    }
 
-      return searchMatch && roleMatch && statusMatch
-    })
+    // Filter by status (isActive)
+    if (status && status !== "all") {
+      const isActive = status === "active";
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.isActive === isActive,
+      );
+    }
 
-    const sortedData = applySort(filteredData, sort, order)
+    // Filter by role (isDealer)
+    if (isDealer && isDealer !== "all") {
+      const isDealerBool = isDealer === "true";
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.isDealer === isDealerBool,
+      );
+    }
 
-    const total = sortedData.length
-    const totalPages = Math.ceil(total / pageSize)
-    const start = (page - 1) * pageSize
-    const end = start + pageSize
-    const paginatedData = sortedData.slice(start, end)
+    const sortedData = applySort(filteredCustomers, sort, order);
+
+    const total = sortedData.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const paginatedData = sortedData.slice(
+      (page - 1) * pageSize,
+      page * pageSize,
+    );
 
     return HttpResponse.json({
       data: paginatedData,
@@ -49,82 +66,125 @@ export const customerHandlers = [
         pageSize,
         totalPages,
       },
-    })
+    });
+  }),
+
+  // GET customer options for dropdowns
+  http.get("*/customers/options", () => {
+    const customerOptions = customers.map((c) => ({ id: c.id, name: c.name, mobile: c.mobile }));
+    return HttpResponse.json(customerOptions);
   }),
 
   // GET a single customer by ID
   http.get("*/customers/:id", ({ params }) => {
-    const { id } = params
-    const customer = customers.find((c) => c.id === id)
+    const { id } = params;
+    const customer = customers.find((c) => c.id === id);
     if (!customer) {
-      return new HttpResponse(null, { status: 404 })
+      return new HttpResponse(null, { status: 404 });
     }
-    return HttpResponse.json(customer)
+    return HttpResponse.json(customer);
   }),
 
   // POST (create) a customer
-  http.post("https://api.example.com/customers", async ({ request }) => {
-    await delay(500)
-    const data = (await request.json()) as CustomerFormValues
-    const newCustomer: Customer = {
-      id: `cust_${Date.now()}`,
-      ...data,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  http.post("*/customers", async ({ request }) => {
+    try {
+      await delay(500);
+      const data = (await request.json()) as CustomerFormValues;
+
+      if (!data.name) {
+        return HttpResponse.json(
+          { message: "Customer name is required" },
+          { status: 400 },
+        );
+      }
+
+      const newCustomer: Customer = {
+        id: `cust_${Date.now()}`,
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      customers.unshift(newCustomer);
+      return HttpResponse.json(newCustomer, { status: 201 });
+    } catch (e) {
+      const error = e as Error;
+      return HttpResponse.json(
+        { message: "MSW Handler Error", error: error.message },
+        { status: 500 },
+      );
     }
-    customers.unshift(newCustomer)
-    return HttpResponse.json(newCustomer, { status: 201 })
   }),
 
   // DELETE a customer
   http.delete("*/customers/:id", ({ params }) => {
-    const { id } = params
-    customers = customers.filter((c) => c.id !== id)
-    return new HttpResponse(null, { status: 204 })
+    const { id } = params;
+    customers = customers.filter((c) => c.id !== id);
+    return new HttpResponse(null, { status: 204 });
   }),
 
   // PATCH a single customer (for status updates, etc.)
   http.patch("*/customers/:id", async ({ params, request }) => {
-    await delay(500)
-    const { id } = params
-    const data = (await request.json()) as Partial<Omit<Customer, "id">>
+    try {
+      await delay(500);
+      const { id } = params;
+      const data = (await request.json()) as Partial<CustomerFormValues>;
+      const customerIndex = customers.findIndex((c) => c.id === id);
 
-    let updatedCustomer: Customer | undefined
-    customers = customers.map((customer) => {
-      if (customer.id === id) {
-        updatedCustomer = { ...customer, ...data }
-        return updatedCustomer
+      if (customerIndex === -1) {
+        return HttpResponse.json(
+          { message: "Customer not found" },
+          { status: 404 },
+        );
       }
-      return customer
-    })
 
-    if (!updatedCustomer) {
-      return new HttpResponse(null, { status: 404 })
+      const updatedCustomer = {
+        ...customers[customerIndex],
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+      customers[customerIndex] = updatedCustomer;
+
+      return HttpResponse.json(updatedCustomer, { status: 200 });
+    } catch (e) {
+      const error = e as Error;
+      return HttpResponse.json(
+        { message: "MSW Handler Error", error: error.message },
+        { status: 500 },
+      );
     }
-
-    return HttpResponse.json(updatedCustomer)
   }),
 
   // PATCH (bulk update) customers
-  http.patch("https://api.example.com/customers", async ({ request }) => {
-    await delay(1000)
-    const { ids, data } = (await request.json()) as { ids: string[]; data: Partial<Omit<Customer, "id">> }
+  http.patch("*/customers", async ({ request }) => {
+    try {
+      await delay(1000);
+      const { ids, data } = (await request.json()) as {
+        ids: string[];
+        data: Partial<Omit<Customer, "id">>;
+      };
 
-    customers = customers.map((customer) => {
-      if (ids.includes(customer.id)) {
-        return { ...customer, ...data }
-      }
-      return customer
-    })
+      customers = customers.map((customer) => {
+        if (ids.includes(customer.id)) {
+          return { ...customer, ...data, updatedAt: new Date().toISOString() };
+        }
+        return customer;
+      });
 
-    return HttpResponse.json({ status: "ok" })
+      return HttpResponse.json({ status: "ok" });
+    } catch (e) {
+      const error = e as Error;
+      return HttpResponse.json(
+        { message: "MSW Handler Error", error: error.message },
+        { status: 500 },
+      );
+    }
   }),
 
   // DELETE (bulk) customers
-  http.delete("https://api.example.com/customers", async ({ request }) => {
-    await delay(1000)
-    const { ids } = (await request.json()) as { ids: string[] }
-    customers = customers.filter((c) => !ids.includes(c.id))
-    return HttpResponse.json({ status: "ok" })
+  http.delete("*/customers", async ({ request }) => {
+    await delay(1000);
+    const { ids } = (await request.json()) as { ids: string[] };
+    customers = customers.filter((c) => !ids.includes(c.id));
+    return HttpResponse.json({ status: "ok" });
   }),
-]
+];

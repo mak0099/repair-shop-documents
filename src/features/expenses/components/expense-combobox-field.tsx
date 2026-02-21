@@ -14,6 +14,7 @@ interface ExpenseComboboxFieldProps<TFieldValues extends FieldValues> {
   placeholder?: string
   required?: boolean
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function ExpenseComboboxField<TFieldValues extends FieldValues>({
@@ -23,6 +24,7 @@ export function ExpenseComboboxField<TFieldValues extends FieldValues>({
   placeholder = "Select Expense",
   required = false,
   disabled = false,
+  readOnly = false,
 }: ExpenseComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useExpenseModal()
@@ -60,6 +62,7 @@ export function ExpenseComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

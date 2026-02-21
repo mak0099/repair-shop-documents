@@ -9,21 +9,27 @@ let models = [...mockModels]
 
 export const modelHandlers = [
   // GET all models with pagination and search
-  http.get("https://api.example.com/models", async ({ request }) => {
+  http.get("*/models", async ({ request }) => {
     await delay(500)
     const url = new URL(request.url)
-    const page = Number(url.searchParams.get("page") || "1")
-    const pageSize = Number(url.searchParams.get("pageSize") || "10")
-    const search = url.searchParams.get("search")?.toLowerCase() || ""
+    const page = parseInt(url.searchParams.get("page") || "1", 10)
+    const pageSize = parseInt(url.searchParams.get("pageSize") || "10", 10)
+    const search = url.searchParams.get("search") || ""
     const sort = url.searchParams.get("_sort")
     const order = url.searchParams.get("_order")
     const status = url.searchParams.get("status")
 
-    const filteredData = models.filter((model) => {
-      const searchMatch = model.name.toLowerCase().includes(search)
-      const statusMatch = !status || status === "all" || (model.isActive ? "active" : "inactive") === status
-      return searchMatch && statusMatch
-    })
+    let filteredData = models
+
+    if (search) {
+      const lowercasedSearch = search.toLowerCase()
+      filteredData = filteredData.filter((model) => model.name.toLowerCase().includes(lowercasedSearch))
+    }
+
+    if (status && status !== "all") {
+      const isActive = status === "active"
+      filteredData = filteredData.filter((model) => model.isActive === isActive)
+    }
 
     const sortedData = applySort(filteredData, sort, order)
     
@@ -35,9 +41,7 @@ export const modelHandlers = [
 
     const total = dataWithBrand.length
     const totalPages = Math.ceil(total / pageSize)
-    const start = (page - 1) * pageSize
-    const end = start + pageSize
-    const paginatedData = dataWithBrand.slice(start, end)
+    const paginatedData = dataWithBrand.slice((page - 1) * pageSize, page * pageSize)
 
     return HttpResponse.json({
       data: paginatedData,
@@ -48,6 +52,20 @@ export const modelHandlers = [
         totalPages,
       },
     })
+  }),
+
+  // GET model options for dropdowns
+  http.get("*/models/options", async ({ request }) => {
+    await delay(300)
+    const url = new URL(request.url)
+    const brandId = url.searchParams.get("brand_id")
+
+    let filteredModels = models
+    if (brandId) {
+      filteredModels = models.filter((m) => m.brand_id === brandId)
+    }
+    const modelOptions = filteredModels.map((m) => ({ id: m.id, name: m.name }))
+    return HttpResponse.json(modelOptions)
   }),
 
   // GET a single model by ID
@@ -62,76 +80,93 @@ export const modelHandlers = [
   }),
 
   // POST a new model
-  http.post("https://api.example.com/models", async ({ request }) => {
-    await delay(1000)
-    const data = (await request.json()) as ModelFormValues
+  http.post("*/models", async ({ request }) => {
+    try {
+      await delay(500)
+      const data = (await request.json()) as ModelFormValues
 
-    const newModel: Model = {
-      id: `model-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...data,
+      if (!data.name) {
+        return HttpResponse.json({ message: "Model name is required" }, { status: 400 })
+      }
+
+      const newModel: Model = {
+        id: `model-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        ...data,
+      }
+      models.unshift(newModel)
+      return HttpResponse.json(newModel, { status: 201 })
+    } catch (e) {
+      const error = e as Error
+      return HttpResponse.json({ message: "MSW Handler Error", error: error.message }, { status: 500 })
     }
-    models.unshift(newModel)
-    return HttpResponse.json(newModel, { status: 201 })
   }),
 
   // PATCH a model
   http.patch("*/models/:id", async ({ params, request }) => {
-    await delay(1000)
-    const { id } = params
-    const updates = (await request.json()) as Partial<ModelFormValues>
+    try {
+      await delay(500)
+      const { id } = params
+      const data = (await request.json()) as Partial<ModelFormValues>
+      const modelIndex = models.findIndex((m) => m.id === id)
 
-    let updatedModel: Model | undefined
-    models = models.map((model) => {
-      if (model.id === id) {
-        updatedModel = { ...model, ...updates, updatedAt: new Date().toISOString() }
-        return updatedModel
+      if (modelIndex === -1) {
+        return HttpResponse.json({ message: "Model not found" }, { status: 404 })
       }
-      return model
-    })
 
-    if (!updatedModel) {
-      return new HttpResponse(null, { status: 404 })
+      const updatedModel = { ...models[modelIndex], ...data, updatedAt: new Date().toISOString() }
+      models[modelIndex] = updatedModel
+
+      return HttpResponse.json(updatedModel, { status: 200 })
+    } catch (e) {
+      const error = e as Error
+      return HttpResponse.json({ message: "MSW Handler Error", error: error.message }, { status: 500 })
     }
-
-    return HttpResponse.json(updatedModel)
   }),
 
   // DELETE a model
   http.delete("*/models/:id", ({ params }) => {
-    const { id } = params
-    models = models.filter((m) => m.id !== id)
-    return new HttpResponse(null, { status: 204 })
+    try {
+      const { id } = params
+      models = models.filter((m) => m.id !== id)
+      return new HttpResponse(null, { status: 204 })
+    } catch (e) {
+      const error = e as Error
+      return HttpResponse.json({ message: "MSW Handler Error", error: error.message }, { status: 500 })
+    }
   }),
 
   // PATCH (bulk update) models
-  http.patch("https://api.example.com/models", async ({ request }) => {
-    await delay(1000)
-    const { ids, data } = (await request.json()) as { ids: string[]; data: Partial<Omit<Model, "id">> }
+  http.patch("*/models", async ({ request }) => {
+    try {
+      await delay(1000)
+      const { ids, data } = (await request.json()) as { ids: string[]; data: Partial<Omit<Model, "id">> }
 
-    models = models.map((model) => {
-      if (ids.includes(model.id)) {
-        return { ...model, ...data, updatedAt: new Date().toISOString() }
-      }
-      return model
-    })
+      models = models.map((model) => {
+        if (ids.includes(model.id)) {
+          return { ...model, ...data, updatedAt: new Date().toISOString() }
+        }
+        return model
+      })
 
-    return HttpResponse.json({ status: "ok" })
+      return HttpResponse.json({ status: "ok" })
+    } catch (e) {
+      const error = e as Error
+      return HttpResponse.json({ message: "MSW Handler Error", error: error.message }, { status: 500 })
+    }
   }),
 
   // DELETE (bulk) models
-  http.delete("https://api.example.com/models", async ({ request }) => {
-    await delay(1000)
-    const { ids } = (await request.json()) as { ids: string[] }
-    models = models.filter((m) => !ids.includes(m.id))
-    return HttpResponse.json({ status: "ok" })
-  }),
-
-  // GET model options for dropdowns
-  http.get("*/models/options", async () => {
-    await delay(300)
-    const modelOptions = models.map((m) => ({ id: m.id, name: m.name }))
-    return HttpResponse.json(modelOptions)
+  http.delete("*/models", async ({ request }) => {
+    try {
+      await delay(1000)
+      const { ids } = (await request.json()) as { ids: string[] }
+      models = models.filter((m) => !ids.includes(m.id))
+      return HttpResponse.json({ status: "ok" })
+    } catch (e) {
+      const error = e as Error
+      return HttpResponse.json({ message: "MSW Handler Error", error: error.message }, { status: 500 })
+    }
   }),
 ]

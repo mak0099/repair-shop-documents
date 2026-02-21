@@ -6,7 +6,7 @@ import { useGlobalModal } from "@/components/shared/global-modal-context"
 /**
  * Generic options for opening a feature-specific modal.
  */
-interface ModalOptions<T> {
+interface BaseModalOptions<T> {
   initialData?: T
   onSuccess?: (data: T) => void
   isViewMode?: boolean
@@ -15,8 +15,8 @@ interface ModalOptions<T> {
 /**
  * Generic context type for a feature-specific modal.
  */
-interface ModalContextType<T> {
-  openModal: (options?: ModalOptions<T>) => void
+interface ModalContextType<T, O extends object> {
+  openModal: (options?: BaseModalOptions<T> & O) => void
   closeModal: () => void
 }
 
@@ -35,7 +35,10 @@ interface ModalConfig {
   viewDescription?: string
 }
 
-export function createModalContext<T extends { id: string }>(config: ModalConfig) {
+export function createModalContext<
+  T extends { id: string },
+  O extends object = object,
+>(config: ModalConfig) {
   const {
     featureName,
     formName,
@@ -48,14 +51,14 @@ export function createModalContext<T extends { id: string }>(config: ModalConfig
     viewDescription = `View ${featureName.toLowerCase()} details.`,
   } = config
 
-  const Context = createContext<ModalContextType<T> | undefined>(undefined)
+  const Context = createContext<ModalContextType<T, O> | undefined>(undefined)
 
-  function useModalLogic(): ModalContextType<T> {
+  function useModalLogic(): ModalContextType<T, O> {
     const { openModal: openGlobalModal, closeModal: closeGlobalModal } = useGlobalModal()
 
     const openModal = useCallback(
-      (options?: ModalOptions<T>) => {
-        const { initialData, onSuccess, isViewMode } = options || {}
+      (options?: BaseModalOptions<T> & O) => {
+        const { initialData, onSuccess, isViewMode, ...rest } = options || {}
         const isEditMode = !!initialData && !isViewMode
 
         let title = addTitle
@@ -78,6 +81,7 @@ export function createModalContext<T extends { id: string }>(config: ModalConfig
             onSuccess?.(data as T)
             closeGlobalModal()
           },
+          ...rest,
         })
       },
       [openGlobalModal, closeGlobalModal, addTitle, addDescription, viewTitle, viewDescription, editTitle, editDescription, formName, modalClassName]

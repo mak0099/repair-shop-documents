@@ -16,6 +16,7 @@ interface MasterSettingComboboxFieldProps<TFieldValues extends FieldValues> {
   placeholder?: string
   required?: boolean
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function MasterSettingComboboxField<TFieldValues extends FieldValues>({
@@ -26,6 +27,7 @@ export function MasterSettingComboboxField<TFieldValues extends FieldValues>({
   placeholder = "Select a value",
   required = false,
   disabled = false,
+  readOnly = false,
 }: MasterSettingComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useMasterSettingModal()
@@ -63,6 +65,7 @@ export function MasterSettingComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

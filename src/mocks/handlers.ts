@@ -1,5 +1,6 @@
 // src/mocks/handlers.ts
 import { acceptanceHandlers } from "@/features/acceptances/mocks/acceptances.handlers";
+import { attributeHandlers } from "@/features/attributes/mocks/attribute.handlers";
 import { brandHandlers } from "@/features/brands/mocks/brands.handlers"; // Make sure this import is correct
 import { customerHandlers } from "@/features/customers/mocks/customers.handlers";
 import { itemHandlers } from "@/features/items/mocks/items.handlers"
@@ -12,6 +13,7 @@ import { expenseHandlers } from "@/features/expenses/mocks/expenses.handlers"
 
 export const handlers = [
   ...acceptanceHandlers,
+  ...attributeHandlers,
   ...customerHandlers,
   ...brandHandlers,
   ...itemHandlers,

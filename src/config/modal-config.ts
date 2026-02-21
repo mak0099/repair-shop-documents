@@ -20,6 +20,7 @@ import { ExpenseModalProvider } from "@/features/expenses/expense-modal-context"
 import { ExpenseForm } from "@/features/expenses/components/expense-form"
 import { AcceptanceForm } from "@/features/acceptances/components/acceptance-form"
 import { AcceptanceModalProvider } from "@/features/acceptances/acceptance-modal-context"
+import { AttributeForm, AttributeModalProvider } from "@/features/attributes"
 
 // 1. Define a structure for each modal configuration
 interface ModalConfig {
@@ -30,6 +31,11 @@ interface ModalConfig {
 
 // 2. Create the configuration array. This is the ONLY file you'll need to edit for new modals.
 export const modalRegistry: readonly ModalConfig[] = [
+  {
+    type: "attributeForm",
+    contentComponent: AttributeForm,
+    providerComponent: AttributeModalProvider,
+  },
   {
     type: "brandForm",
     contentComponent: BrandForm,

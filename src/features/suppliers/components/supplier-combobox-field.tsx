@@ -14,6 +14,7 @@ interface SupplierComboboxFieldProps<TFieldValues extends FieldValues> {
   placeholder?: string
   required?: boolean
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function SupplierComboboxField<TFieldValues extends FieldValues>({
@@ -23,6 +24,7 @@ export function SupplierComboboxField<TFieldValues extends FieldValues>({
   placeholder = "Select Supplier",
   required = false,
   disabled = false,
+  readOnly = false,
 }: SupplierComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useSupplierModal()
@@ -60,6 +62,7 @@ export function SupplierComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

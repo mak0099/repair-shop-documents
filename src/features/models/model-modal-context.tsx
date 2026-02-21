@@ -1,8 +1,15 @@
-"use client"
+// src/features/models/model-modal-context.tsx
 import { createModalContext } from "@/lib/modal-context-factory"
-import { Model } from "./model.schema";
+import type { Model } from "./model.schema"
 
-const { ModalProvider, useModal } = createModalContext<Model>({
+export interface ModelModalOptions {
+  initialData?: Model | null
+  onSuccess?: (data: Model) => void
+  isViewMode?: boolean
+  brandId?: string
+}
+
+const { ModalProvider, useModal } = createModalContext<Model, ModelModalOptions>({
   featureName: "Model",
   formName: "modelForm",
   modalClassName: "max-w-lg",

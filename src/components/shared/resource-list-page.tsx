@@ -126,7 +126,7 @@ interface ResourceListPageProps<TData extends { id: string }, TValue> {
   useResourceQuery: (
     filters: ResourceFilters
   ) => UseQueryResult<{ data: TData[]; meta: { total: number; page: number; pageSize: number; totalPages: number } }, Error>
-  initialFilters: ResourceFilters
+  initialFilters?: ResourceFilters
   searchPlaceholder: string
   filterDefinitions?: FilterDefinition[]
   onTableReady?: (table: Table<TData>) => void
@@ -134,6 +134,12 @@ interface ResourceListPageProps<TData extends { id: string }, TValue> {
   bulkDeleteMutation?: UseMutationResult<unknown, Error, string[], unknown>
   bulkStatusUpdateMutation?: UseMutationResult<unknown, Error, { ids: string[]; data: { isActive: boolean } }, unknown>
   config?: ResourceListConfig
+}
+
+const DEFAULT_INITIAL_FILTERS: ResourceFilters = {
+  page: 1,
+  pageSize: 10,
+  search: "",
 }
 
 export function ResourceListPage<TData extends { id: string }, TValue>({
@@ -144,7 +150,7 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
   addLabel,
   columns,
   useResourceQuery,
-  initialFilters,
+  initialFilters = DEFAULT_INITIAL_FILTERS,
   searchPlaceholder,
   filterDefinitions = [],
   onTableReady,

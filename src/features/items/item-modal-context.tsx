@@ -5,7 +5,7 @@ import { Item } from "./item.schema"
 const { ModalProvider, useModal } = createModalContext<Item>({
   featureName: "Item",
   formName: "itemForm",
-  modalClassName: "max-w-3xl",
+  modalClassName: "max-w-7xl max-h-[95vh] overflow-y-auto",
   addDescription: "Create a new inventory item.",
   editDescription: "Update item details.",
   viewDescription: "View item details.",

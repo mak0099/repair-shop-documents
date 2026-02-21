@@ -14,6 +14,7 @@ interface UserComboboxFieldProps<TFieldValues extends FieldValues> {
   placeholder?: string
   required?: boolean
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function UserComboboxField<TFieldValues extends FieldValues>({
@@ -23,6 +24,7 @@ export function UserComboboxField<TFieldValues extends FieldValues>({
   placeholder = "Select User",
   required = false,
   disabled = false,
+  readOnly = false,
 }: UserComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useUserModal()
@@ -60,6 +62,7 @@ export function UserComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

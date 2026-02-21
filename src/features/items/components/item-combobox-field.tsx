@@ -14,6 +14,7 @@ interface ItemComboboxFieldProps<TFieldValues extends FieldValues> {
   placeholder?: string
   required?: boolean
   disabled?: boolean
+  readOnly?: boolean
 }
 
 export function ItemComboboxField<TFieldValues extends FieldValues>({
@@ -23,6 +24,7 @@ export function ItemComboboxField<TFieldValues extends FieldValues>({
   placeholder = "Select Item",
   required = false,
   disabled = false,
+  readOnly = false,
 }: ItemComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useItemModal()
@@ -60,6 +62,7 @@ export function ItemComboboxField<TFieldValues extends FieldValues>({
         required={required}
         isLoading={isLoading}
         disabled={disabled}
+        readOnly={readOnly}
       />
     </>
   )

@@ -1,25 +1,49 @@
 import { z } from "zod";
-import { BaseEntity } from "@/types/common";
 
 /**
- * Validates all inventory items including dynamic specifications.
+ * Standardized Schema for Unified Item Management
  */
 export const itemSchema = z.object({
-  name: z.string().trim().min(1, "Item name is required"),
-  sku: z.string().trim().min(1, "SKU/Barcode is required"),
-  type: z.enum(['PRODUCT', 'SPARE_PART', 'ACCESSORY']),
-  brand_id: z.string().min(1, "Brand is required"),
-  model_id: z.string().optional(),
+  id: z.string().optional(),
+  name: z.string().min(1, "Product name is required"),
   
-  price: z.coerce.number().min(0, "Price cannot be negative"),
-  cost_price: z.coerce.number().min(0, "Cost cannot be negative"),
-  stock_qty: z.coerce.number().default(0),
+  // Relational IDs (Standardized naming)
+  categoryId: z.string().min(1, "Category is required"),
+  brandId: z.string().min(1, "Brand is required"),
+  modelId: z.string().optional(),
+  supplierId: z.string().optional(),
+  boxNumberId: z.string().optional(), // Linked to Storage Box master
   
-  // JSON field for dynamic properties (RAM, ROM, etc.)
-  specifications: z.record(z.any()).optional().default({}),
+  // Technical Specifications
+  deviceType: z.string().optional(),
+  imei: z.string().optional(),
+  color: z.string().optional(),
+  ram: z.string().optional(),
+  rom: z.string().optional(),
+  processor: z.string().optional(),
+  camera: z.string().optional(),
+  size: z.string().optional(),
+  batteryHealth: z.string().optional(),
+  grade: z.string().optional(),
+
+  // Pricing & Inventory
+  purchasePrice: z.coerce.number().min(0).default(0),
+  salePrice: z.coerce.number().min(0).default(0),
+  initialStock: z.coerce.number().default(0),
+  homeStock: z.string().optional(),
+  sku: z.string().optional(),
+
+  // Logistics & Status Flags
+  condition: z.enum(["Used", "New"]).default("Used"),
+  isBoxIncluded: z.enum(["Yes", "No"]).default("No"),
+  isChargerIncluded: z.enum(["Yes", "No"]).default("No"),
+  addToKhata: z.enum(["Yes", "No"]).default("No"),
+  isTouchScreen: z.boolean().default(false),
+  isSolidDevice: z.boolean().default(false),
+  
+  note: z.string().optional(),
+  description: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 
-export type ItemFormValues = z.infer<typeof itemSchema>;
-
-export interface Item extends BaseEntity, ItemFormValues {}
+export type ItemFormData = z.infer<typeof itemSchema>;
