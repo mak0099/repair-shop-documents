@@ -10,8 +10,12 @@ import { userHandlers } from "@/features/users/mocks/users.handlers"
 import { categoryHandlers } from "@/features/categories/mocks/categories.handlers"
 import { supplierHandlers } from "@/features/suppliers/mocks/suppliers.handlers"
 import { expenseHandlers } from "@/features/expenses/mocks/expenses.handlers"
+import { permissionHandlers } from "@/features/permissions/mocks/permissions.handlers"
+import { stockHandlers } from "@/features/stock/mocks/stock.handlers";
+import { stockAdjustmentHandlers } from "@/features/stock-adjustment/mocks/stock-adjustment.handlers";
 
 export const handlers = [
+  ...permissionHandlers,
   ...acceptanceHandlers,
   ...attributeHandlers,
   ...customerHandlers,
@@ -23,4 +27,6 @@ export const handlers = [
   ...categoryHandlers,
   ...supplierHandlers,
   ...expenseHandlers,
+  ...stockHandlers,
+  ...stockAdjustmentHandlers
 ]

@@ -1,23 +1,9 @@
-"use client"
+import { StockList } from "@/features/stock"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-
-export default function HomeStockListPage() {
+export default function BrandsPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div>
-        <h1 className="text-3xl font-bold">Home Stock List</h1>
-        <p className="text-muted-foreground">View home delivery stock levels</p>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Stock Inventory</CardTitle>
-          <CardDescription>Home delivery stock levels</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>This page is under development. Stock management will be implemented here.</p>
-        </CardContent>
-      </Card>
+      <StockList />
     </div>
   )
 }

@@ -46,6 +46,12 @@ export const boxNumberHandlers = [
     return HttpResponse.json({ data: paginatedData, meta: { total, page, pageSize, totalPages } })
   }),
 
+  // GET box number options for dropdowns
+  http.get("*/box-numbers/options", () => {
+    const boxNumberOptions = boxNumbers.map((b) => ({ id: b.id, name: b.name }))
+    return HttpResponse.json(boxNumberOptions)
+  }),
+
   // Create BoxNumber
   http.post("*/box-numbers", async ({ request }) => {
     try {
@@ -134,11 +140,5 @@ export const boxNumberHandlers = [
     const { id } = params
     boxNumbers = boxNumbers.filter((b) => b.id !== id)
     return new HttpResponse(null, { status: 204 })
-  }),
-
-  // GET box number options for dropdowns
-  http.get("*/box-numbers/options", () => {
-    const boxNumberOptions = boxNumbers.map((b) => ({ id: b.id, name: b.name }))
-    return HttpResponse.json(boxNumberOptions)
   }),
 ]

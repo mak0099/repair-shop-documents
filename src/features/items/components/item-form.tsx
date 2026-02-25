@@ -139,10 +139,10 @@ export function ItemForm({ onSuccess }: { onSuccess?: () => void }) {
                   </CardHeader>
                   <CardContent className="p-4 space-y-4">
                     <div className="bg-slate-50 p-3 rounded-md border space-y-2">
-                      <RadioGroupField control={control} name="condition" label="Product Condition" options={[{ label: "Used", value: "Used" }, { label: "New", value: "New" }]} />
-                      <div className="grid grid-cols-2 gap-3">
-                        <RadioGroupField control={control} name="isBoxIncluded" label="Box?" options={[{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }]} />
-                        <RadioGroupField control={control} name="isChargerIncluded" label="Charger?" options={[{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }]} />
+                      <div className="grid grid-cols-1 gap-3">
+                        <RadioGroupField layout="horizontal" control={control} name="condition" label="Condition?" options={[{ label: "Used", value: "Used" }, { label: "New", value: "New" }]} />
+                        <RadioGroupField layout="horizontal" control={control} name="isBoxIncluded" label="Box?" options={[{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }]} />
+                        <RadioGroupField layout="horizontal" control={control} name="isChargerIncluded" label="Charger?" options={[{ label: "Yes", value: "Yes" }, { label: "No", value: "No" }]} />
                       </div>
                       <CheckboxField control={control} name="isTouchScreen" label="Touch Screen" />
                       <CheckboxField control={control} name="isSolidDevice" label="Is Solid Device" />

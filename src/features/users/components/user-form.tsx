@@ -57,7 +57,7 @@ export function UserForm({ initialData, onSuccess, isViewMode: initialIsViewMode
     if (isEditMode && initialData) {
       form.reset({ ...initialData, password: "" })
     }
-  }, [initialData, isEditMode, form.reset])
+  }, [initialData, isEditMode, form])
   const onFormError = (errors: FieldErrors<UserFormValues>) => {
     console.error("User form validation errors:", errors)
     toast.error("Please fill all required fields correctly.")

@@ -22,6 +22,8 @@ interface RadioGroupFieldProps {
   options?: RadioOption[]
   required?: boolean
   className?: string
+  layout?: "horizontal" | "vertical" | "partial-horizontal"
+  readOnly?: boolean
 }
 
 export function RadioGroupField({
@@ -34,29 +36,71 @@ export function RadioGroupField({
     { value: "No", label: "No" },
   ],
   className,
+  layout = "vertical", // Default to vertical as it's safer and more common
+  readOnly = false,
 }: RadioGroupFieldProps) {
+  // Layout classes for the main FormItem container
+  const formItemLayoutClass = {
+    horizontal: "grid grid-cols-1 items-center gap-x-4 gap-y-2 md:grid-cols-3",
+    vertical: "space-y-2",
+    "partial-horizontal": "space-y-2",
+  }[layout]
+
+  // Layout classes for the FormLabel
+  const formLabelLayoutClass = {
+    horizontal: "text-left md:text-right",
+    vertical: "",
+    "partial-horizontal": "",
+  }[layout]
+
+  // Layout classes for the RadioGroup itself (options container)
+  const radioGroupLayoutClass = {
+    horizontal: "flex flex-row flex-wrap items-center gap-x-6 gap-y-2",
+    vertical: "flex flex-col space-y-2 pt-1",
+    "partial-horizontal": "flex flex-row flex-wrap items-center gap-x-6 gap-y-2 pt-1",
+  }[layout]
+
+  // Layout classes for the FormControl wrapper
+  const formControlLayoutClass = {
+    horizontal: "md:col-span-2",
+    vertical: "",
+    "partial-horizontal": "",
+  }[layout]
+
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className={cn("grid grid-cols-1 lg:grid-cols-2 gap-6 ", className)}>
-          <FormLabel className={cn("text-xs", required && "required")}>{label}</FormLabel>
-          <FormControl>
+        <FormItem className={cn(formItemLayoutClass, className)}>
+          <FormLabel className={cn("text-xs", required && "required", formLabelLayoutClass)}>
+            {label}
+          </FormLabel>
+          <FormControl className={formControlLayoutClass}>
             <RadioGroup
               onValueChange={field.onChange}
               value={field.value}
-              className="flex flex-row space-x-6"
+              className={radioGroupLayoutClass}
+              disabled={readOnly}
             >
               {options.map((option) => (
                 <div key={option.value} className="flex items-center space-x-2">
                   <RadioGroupItem value={option.value} id={`${name}_${option.value}`} />
-                  <Label htmlFor={`${name}_${option.value}`}>{option.label}</Label>
+                  <Label
+                    htmlFor={`${name}_${option.value}`}
+                    className="font-normal cursor-pointer"
+                  >
+                    {option.label}
+                  </Label>
                 </div>
               ))}
             </RadioGroup>
           </FormControl>
-          <FormMessage />
+          <FormMessage
+            className={cn(
+              layout === "horizontal" && "md:col-span-3 md:col-start-2"
+            )}
+          />
         </FormItem>
       )}
     />

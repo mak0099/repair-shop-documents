@@ -5,7 +5,7 @@ import { StockAdjustment } from "./stock-adjustment.schema";
 const { ModalProvider, useModal } = createModalContext<StockAdjustment>({
   featureName: "Stock Adjustment",
   formName: "stockAdjustmentForm",
-  modalClassName: "max-w-lg",
+  modalClassName: "max-w-2xl max-h-[90vh] overflow-y-auto",
   addTitle: "Add Stock Adjustment",
   addDescription: "Record a new stock adjustment.",
   editTitle: "Edit Stock Adjustment",

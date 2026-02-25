@@ -1,13 +1,15 @@
 export const STOCK_ADJUSTMENT_TYPE_OPTIONS = [
-  { value: "IN", label: "Stock In" },
-  { value: "OUT", label: "Stock Out" },
+  { value: "IN", label: "Stock In (Addition)" },
+  { value: "OUT", label: "Stock Out (Reduction)" },
 ];
 
 export const STOCK_ADJUSTMENT_REASON_OPTIONS = [
-  { value: "Damage", label: "Damage" },
-  { value: "Theft", label: "Theft" },
   { value: "Inventory Audit", label: "Inventory Audit" },
-  { value: "Return", label: "Return" },
+  { value: "Damage", label: "Damage / Broken" },
+  { value: "Theft", label: "Theft / Loss" },
+  { value: "Return", label: "Return to Supplier" },
   { value: "Restock", label: "Restock" },
+  { value: "Correction", label: "Data Entry Correction" }, // নতুন
+  { value: "Testing Issue", label: "Testing Failure" },    // নতুন
   { value: "Other", label: "Other" },
 ];

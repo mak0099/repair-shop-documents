@@ -56,6 +56,13 @@ export const itemHandlers = [
     })
   }),
 
+  // GET item options for dropdowns
+  http.get("*/items/options", async () => {
+    await delay(300)
+    const itemOptions = items.map((i) => ({ id: i.id, name: i.name }))
+    return HttpResponse.json(itemOptions)
+  }),
+
   // GET a single item by ID
   http.get("*/items/:id", ({ params }) => {
     const { id } = params
@@ -64,13 +71,6 @@ export const itemHandlers = [
       return new HttpResponse(null, { status: 404 })
     }
     return HttpResponse.json(item)
-  }),
-
-  // GET item options for dropdowns
-  http.get("*/items/options", async () => {
-    await delay(300)
-    const itemOptions = items.map((i) => ({ id: i.id, name: i.name }))
-    return HttpResponse.json(itemOptions)
   }),
 
   // POST a new item
