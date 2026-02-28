@@ -4,8 +4,10 @@ import { useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 
 import { ResourceListPage } from "@/components/shared/resource-list-page"
+import { ResourceActions } from "@/components/shared/resource-actions"
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header"
 import { StatusCell } from "@/components/shared/data-table-cells"
+
 import {
   useCustomers,
   useDeleteCustomer,
@@ -13,10 +15,28 @@ import {
   useUpdateCustomer,
   useUpdateManyCustomers,
 } from "../customer.api"
-import { INITIAL_FILTERS, ROLE_OPTIONS, STATUS_OPTIONS } from "../customer.constants"
 import { Customer } from "../customer.schema"
-import { ResourceActions } from "@/components/shared/resource-actions"
 import { useCustomerModal } from "../customer-modal-context"
+
+/**
+ * Filter Options: Standardized for Boolean Consistency.
+ */
+const ACTIVE_STATUS_OPTIONS = [
+  { label: "Active Only", value: "true" },
+  { label: "Inactive Only", value: "false" },
+]
+
+const DEALER_OPTIONS = [
+  { label: "Business/Dealer", value: "true" },
+  { label: "Regular Customer", value: "false" },
+]
+
+const INITIAL_FILTERS = {
+  search: "",
+  page: 1,
+  pageSize: 10,
+  isActive: "all",
+}
 
 export function CustomerList() {
   const deleteCustomerMutation = useDeleteCustomer()
@@ -28,31 +48,38 @@ export function CustomerList() {
   const columns: ColumnDef<Customer>[] = useMemo(
     () => [
       {
-        accessorKey: "id",
-        header: "ID",
-      },
-      {
         accessorKey: "name",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Customer Name" />,
         cell: ({ row }) => (
           <div
-            className="font-medium cursor-pointer hover:underline"
+            className="font-semibold text-blue-600 cursor-pointer hover:underline transition-all"
             onClick={() => openModal({ initialData: row.original, isViewMode: true })}
-          >{row.getValue("name")}</div>
+          >
+            {row.getValue("name")}
+          </div>
         ),
       },
       {
         accessorKey: "mobile",
-        header: "Mobile",
+        header: "Contact Number",
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.mobile}</span>,
       },
       {
         accessorKey: "email",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
+        header: "Email",
+        cell: ({ row }) => <span className="text-slate-500">{row.original.email || "—"}</span>,
       },
       {
         accessorKey: "isDealer",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Dealer?" />,
-        cell: ({ row }) => <StatusCell isActive={row.original.isDealer} />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <StatusCell isActive={row.original.isDealer} />
+            <span className="text-[10px] uppercase font-black text-slate-400">
+              {row.original.isDealer ? "Dealer" : "Retail"}
+            </span>
+          </div>
+        ),
       },
       {
         id: "actions",
@@ -63,8 +90,9 @@ export function CustomerList() {
             resource={row.original}
             resourceName="Customer"
             resourceTitle={row.original.name}
-            onView={(customer) => openModal({ initialData: customer, isViewMode: true })}
-            onEdit={(customer) => openModal({ initialData: customer })}
+            onView={() => openModal({ initialData: row.original, isViewMode: true })}
+            onEdit={() => openModal({ initialData: row.original })}
+            
             deleteMutation={deleteCustomerMutation}
             updateMutation={updateCustomerMutation}
           />
@@ -74,33 +102,23 @@ export function CustomerList() {
     [deleteCustomerMutation, updateCustomerMutation, openModal]
   )
 
-  const filterDefinitions = [
-    {
-      key: "status",
-      title: "Status",
-      options: STATUS_OPTIONS,
-    },
-    {
-      key: "isDealer",
-      title: "Role",
-      options: ROLE_OPTIONS,
-    },
-  ]
-
   return (
     <ResourceListPage<Customer, unknown>
-      title="Customers"
+      title="Customer Directory"
       resourceName="customers"
-      description="Manage customer database"
+      description="Manage your client base, including retail customers and business dealers."
       onAdd={() => openModal()}
-      addLabel="Add Customer"
+      addLabel="Add New Customer"
       columns={columns}
       useResourceQuery={useCustomers}
       bulkDeleteMutation={bulkDeleteMutation}
       bulkStatusUpdateMutation={bulkStatusUpdateMutation}
       initialFilters={INITIAL_FILTERS}
-      searchPlaceholder="Search by name, email, or phone..."
-      filterDefinitions={filterDefinitions}
+      searchPlaceholder="Search by name, mobile, or email..."
+      filterDefinitions={[
+        { key: "isActive", title: "Status", options: ACTIVE_STATUS_OPTIONS },
+        { key: "isDealer", title: "Type", options: DEALER_OPTIONS },
+      ]}
     />
   )
 }

@@ -7,11 +7,12 @@ import { mockBoxNumbers } from "./box-numbers.mock"
 let boxNumbers: BoxNumber[] = [...mockBoxNumbers]
 
 export const boxNumberHandlers = [
-  // Get all box numbers
+  // GET all box numbers with standardized isActive filtering
   http.get("*/box-numbers", ({ request }) => {
     const url = new URL(request.url)
     const search = url.searchParams.get("search") || ""
-    const status = url.searchParams.get("status") // 'active', 'inactive', 'all'
+    // FIX: Changed from 'status' to 'isActive' query param
+    const isActiveParam = url.searchParams.get("isActive") 
     const page = parseInt(url.searchParams.get("page") || "1", 10)
     const pageSize = parseInt(url.searchParams.get("pageSize") || "10", 10)
     const sort = url.searchParams.get("_sort")
@@ -30,10 +31,12 @@ export const boxNumberHandlers = [
       )
     }
 
-    // Filter by status (isActive)
-    if (status && status !== "all") {
-      const targetStatus = status.toUpperCase() // "ACTIVE" or "INACTIVE"
-      filteredBoxNumbers = filteredBoxNumbers.filter((boxNumber) => boxNumber.status === targetStatus)
+    // FIX: Filtering logic for boolean isActive
+    if (isActiveParam && isActiveParam !== "all") {
+      const targetIsActive = isActiveParam === "true"
+      filteredBoxNumbers = filteredBoxNumbers.filter(
+        (boxNumber) => boxNumber.isActive === targetIsActive
+      )
     }
 
     const sortedData = applySort(filteredBoxNumbers, sort, order)
@@ -43,99 +46,96 @@ export const boxNumberHandlers = [
     const totalPages = Math.ceil(total / pageSize)
     const paginatedData = sortedData.slice((page - 1) * pageSize, page * pageSize)
 
-    return HttpResponse.json({ data: paginatedData, meta: { total, page, pageSize, totalPages } })
+    return HttpResponse.json({ 
+      data: paginatedData, 
+      meta: { total, page, pageSize, totalPages } 
+    })
   }),
 
-  // GET box number options for dropdowns
+  // GET box number options (remain same, ensuring id/name)
   http.get("*/box-numbers/options", () => {
     const boxNumberOptions = boxNumbers.map((b) => ({ id: b.id, name: b.name }))
     return HttpResponse.json(boxNumberOptions)
   }),
 
-  // Create BoxNumber
+  // POST: Create BoxNumber with boolean logic
   http.post("*/box-numbers", async ({ request }) => {
     try {
       const contentType = request.headers.get("content-type") || ""
-      let data: BoxNumber
+      let payload: Partial<BoxNumber>
 
       if (contentType.includes("multipart/form-data")) {
         const formData = await request.formData()
-        data = {
+        payload = {
           name: formData.get("name") as string,
-          logo: formData.get("logo") as File | null,
-          isActive: formData.get("isActive") === "true",
           location: formData.get("location") as string,
           description: formData.get("description") as string,
-          status: formData.get("status") as "ACTIVE" | "INACTIVE",
+          isActive: formData.get("isActive") === "true", // Handle string boolean from form
         }
       } else {
-        data = (await request.json()) as BoxNumber
+        payload = (await request.json()) as BoxNumber
       }
 
-      if (!data.name) {
+      if (!payload.name) {
         return HttpResponse.json({ message: "Box name/number is required" }, { status: 400 })
       }
 
       const newBoxNumber: BoxNumber = {
         id: `box_${Date.now()}`,
-        name: data.name,
-        location: data.location,
-        description: data.description,
-        status: data.status,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        name: payload.name,
+        location: payload.location || "N/A",
+        description: payload.description || "",
+        // FIX: Removed 'status', strictly using 'isActive'
+        isActive: payload.isActive ?? true, 
       }
 
       boxNumbers.push(newBoxNumber)
       return HttpResponse.json(newBoxNumber, { status: 201 })
     } catch (e) {
       const error = e as Error
-      console.error("Error in MSW handler for POST /box-numbers:", error.message)
-      return HttpResponse.json({ message: "MSW Handler Error", error: error.message }, { status: 500 })
+      return HttpResponse.json({ message: "Server Error", error: error.message }, { status: 500 })
     }
   }),
 
-  // Update BoxNumber
+  // PATCH: Standardized partial updates for isActive
   http.patch("*/box-numbers/:id", async ({ request, params }) => {
     try {
       const { id } = params
-      const boxNumberIndex = boxNumbers.findIndex((b) => b.id === id)
+      const index = boxNumbers.findIndex((b) => b.id === id)
 
-      if (boxNumberIndex === -1) {
+      if (index === -1) {
         return HttpResponse.json({ message: "Box Number not found" }, { status: 404 })
       }
 
-      const existingBoxNumber = boxNumbers[boxNumberIndex]
-      const updatedBoxNumber: BoxNumber = { ...existingBoxNumber, updatedAt: new Date().toISOString() }
+      const existing = boxNumbers[index]
+      let updates: Partial<BoxNumber> = {}
 
       const contentType = request.headers.get("content-type") || ""
 
       if (contentType.includes("multipart/form-data")) {
         const formData = await request.formData()
         const name = formData.get("name")
-        if (typeof name === "string") updatedBoxNumber.name = name
-        const location = formData.get("location")
-        if (typeof location === "string") updatedBoxNumber.location = location
-        const description = formData.get("description")
-        if (typeof description === "string") updatedBoxNumber.description = description
-        const status = formData.get("status")
-        if (typeof status === "string" && (status === "ACTIVE" || status === "INACTIVE")) updatedBoxNumber.status = status
+        const isActive = formData.get("isActive")
+        
+        if (typeof name === "string") updates.name = name
+        if (isActive !== null) updates.isActive = isActive === "true"
+        // ... location/description updates
       } else {
-        const jsonData = (await request.json()) as Partial<BoxNumber>
-        Object.assign(updatedBoxNumber, jsonData)
+        updates = (await request.json()) as Partial<BoxNumber>
       }
 
-      boxNumbers[boxNumberIndex] = updatedBoxNumber
+      // Merge and update
+      const updatedBoxNumber = { ...existing, ...updates }
+      boxNumbers[index] = updatedBoxNumber
 
       return HttpResponse.json(updatedBoxNumber, { status: 200 })
     } catch (e) {
       const error = e as Error
-      console.error(`Error in MSW handler for PATCH /box-numbers/:id:`, error.message)
-      return HttpResponse.json({ message: "MSW Handler Error", error: error.message }, { status: 500 })
+      return HttpResponse.json({ message: "Server Error", error: error.message }, { status: 500 })
     }
   }),
 
-  // DELETE a box number
+  // DELETE a box number (remain same)
   http.delete("*/box-numbers/:id", ({ params }) => {
     const { id } = params
     boxNumbers = boxNumbers.filter((b) => b.id !== id)

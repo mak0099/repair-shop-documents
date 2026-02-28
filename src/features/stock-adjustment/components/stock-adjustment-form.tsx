@@ -15,7 +15,7 @@ import { TextareaField } from "@/components/forms/textarea-field"
 import { RadioGroupField } from "@/components/forms/radio-group-field"
 import { ComboboxWithAdd } from "@/components/forms/combobox-with-add-field"
 
-import { stockAdjustmentSchema, StockAdjustment } from "../stock-adjustment.schema"
+import { stockAdjustmentSchema, StockAdjustment, StockAdjustmentFormValues } from "../stock-adjustment.schema"
 import { useCreateStockAdjustment, useUpdateStockAdjustment } from "../stock-adjustment.api"
 import { STOCK_ADJUSTMENT_REASON_OPTIONS, STOCK_ADJUSTMENT_TYPE_OPTIONS } from "../stock-adjustment.constants"
 import { StockComboboxField } from "@/features/stock/components/stock-combobox-field"
@@ -41,30 +41,47 @@ export function StockAdjustmentForm({
   const { mutate: updateAdjustment, isPending: isUpdating } = useUpdateStockAdjustment()
   const isPending = isCreating || isUpdating
 
-  const form = useForm<StockAdjustment>({
+  /**
+   * FIX: Use 'StockAdjustmentFormValues' instead of 'StockAdjustment'.
+   * This matches the Zod schema and avoids the "id/createdAt" missing error.
+   */
+  const form = useForm<StockAdjustmentFormValues>({
     resolver: zodResolver(stockAdjustmentSchema),
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      stockId: initialData.stockId,
+      type: initialData.type,
+      quantity: initialData.quantity,
+      reason: initialData.reason,
+      date: initialData.date,
+      note: initialData.note || "",
+      itemName: initialData.itemName,
+      imei: initialData.imei,
+      adjustedBy: initialData.adjustedBy,
+    } : {
       stockId: "",
       type: "OUT",
       quantity: 1,
       reason: "Inventory Audit",
       date: new Date().toISOString(),
+      note: "",
     },
   })
 
-  function onSubmit(data: StockAdjustment) {
+  function onSubmit(data: StockAdjustmentFormValues) {
     const callbacks = {
       onSuccess: (res: StockAdjustment) => {
         toast.success(`Stock adjusted successfully`)
-        // Invalidate relevant queries to keep data fresh
         queryClient.invalidateQueries({ queryKey: ["stock-adjustments"] })
         queryClient.invalidateQueries({ queryKey: ["stock"] })
         onSuccess?.(res)
       },
-      onError: (error: any) => toast.error(error.message),
+      onError: (error: Error) => toast.error(error.message),
     }
 
     if (initialData?.id) {
+      /**
+       * We pass the ID separately and the 'data' (FormValues) as the body.
+       */
       updateAdjustment({ id: initialData.id, data }, callbacks)
     } else {
       createAdjustment(data, callbacks)
@@ -75,93 +92,85 @@ export function StockAdjustmentForm({
     <FormProvider {...form}>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Adjustment Details</CardTitle>
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="bg-slate-50/50 border-b">
+              <CardTitle className="text-lg">Adjustment Details</CardTitle>
               <CardDescription>
-                Select the specific stock unit and provide details for the adjustment.
+                Select the specific stock unit (IMEI) and provide adjustment details.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <StockComboboxField
                   control={form.control}
                   name="stockId"
-                  label="Select Specific Unit (IMEI)"
+                  label="Specific Unit (IMEI)"
                   placeholder="Search IMEI or Model..."
                   readOnly={isViewMode || !!initialData}
                 />
                 <RadioGroupField
                   control={form.control}
                   name="type"
-                  label="Movement Type"
+                  label="Movement Direction"
                   options={STOCK_ADJUSTMENT_TYPE_OPTIONS}
                   readOnly={isViewMode}
-                  layout="vertical"
                 />
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <TextField
                   control={form.control}
                   name="quantity"
-                  label="Adjustment Quantity"
+                  label="Quantity"
                   type="number"
                   readOnly={isViewMode}
                 />
                 <ComboboxWithAdd
                   control={form.control}
                   name="reason"
-                  label="Reason for Adjustment"
+                  label="Adjustment Reason"
                   options={STOCK_ADJUSTMENT_REASON_OPTIONS}
-                  placeholder="Select or type a reason..."
+                  placeholder="Select reason..."
                   readOnly={isViewMode}
                 />
               </div>
+
               <TextareaField
                 control={form.control}
                 name="note"
-                label="Additional Context / Notes"
-                placeholder="Why are you making this change? (e.g., specific damage details, audit reference)"
+                label="Notes / Context"
+                placeholder="Ex: Unit found damaged during audit..."
                 readOnly={isViewMode}
-                className="min-h-[80px]"
+                className="min-h-[100px]"
               />
             </CardContent>
           </Card>
 
           {!isViewMode && (
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md flex gap-3 items-start">
-              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-800">
-                <strong>Warning:</strong> Making an adjustment will directly impact your live stock levels. Please double-check the IMEI and Quantity before saving.
-              </p>
-            </div>
-          )}
-
-          {isViewMode && initialData && (
-            <div className="flex items-start gap-3 text-xs text-blue-600 bg-blue-50/50 p-3 rounded-md border border-blue-100">
-              <Info className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-semibold">Audit Information:</p>
-                <p>Adjusted by: {initialData.adjustedBy || "System Admin"}</p>
-                <p>Processed on: {new Date(initialData.date).toLocaleString()}</p>
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex gap-3 items-start">
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div className="text-xs text-amber-900 leading-relaxed">
+                <p className="font-bold mb-1 uppercase tracking-wider">Stock Impact Warning</p>
+                Confirming this will immediately update your inventory levels. 
               </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
             <Button
               variant="ghost"
               type="button"
               onClick={() => onSuccess?.(initialData as StockAdjustment)}
+              className="text-slate-500"
             >
               {isViewMode ? "Close" : "Cancel"}
             </Button>
             {!isViewMode && (
-              <Button type="submit" className="bg-slate-900 px-10" disabled={isPending}>
+              <Button type="submit" className="bg-slate-900 hover:bg-slate-800 min-w-[160px]" disabled={isPending}>
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Applying...
+                    Processing...
                   </>
                 ) : (
                   "Confirm Adjustment"

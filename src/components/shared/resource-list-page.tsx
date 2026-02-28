@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 
-// This definition should ideally be co-located with DataTableFilterToolbar
 export interface FilterDefinition {
   key: string
   title: string
@@ -33,80 +32,17 @@ export interface FilterDefinition {
 }
 
 export interface ResourceListConfig {
-  /** Controls for the 'Add' resource button */
-  add?: {
-    /**
-     * Whether to show the 'Add' button.
-     * Defaults to true if `onAdd` or `addHref` is provided.
-     * @default true
-     */
-    enabled?: boolean
-  }
-  /** Controls for sorting functionality */
-  sorting?: {
-    /** Whether sorting is enabled globally.
-     * @default true
-     */
-    enabled?: boolean;
-    /** Whether multi-column sorting is enabled.
-     * @default true
-     */
-    multiSort?: boolean;
-    /** Whether sorting can be removed (cycle through asc, desc, none).
-     * @default true
-     */
-    enableRemoval?: boolean;
-  };
-  /** Controls for column visibility toggling */
-  columnVisibility?: {
-    /** Whether the column visibility toggle button is shown.
-     * @default true
-     */
-    enabled?: boolean;
-    /** Whether columns are hideable by default. Can be overridden by individual columnDef.enableHiding.
-     * @default true
-     */
-    defaultHidingEnabled?: boolean;
-  };
-  /** Controls for row selection checkboxes */
-  rowSelection?: {
-    /** Whether row selection checkboxes are enabled.
-     * @default true
-     */
-    enabled?: boolean;
-    /** Whether multi-row selection is enabled.
-     * @default true
-     */
-    multiSelect?: boolean;
-  };
-  /** Controls for table design/appearance */
-  tableDesign?: {
-    striped?: boolean;
-    hoverable?: boolean;
-  }
-  /** Controls for the bulk action buttons (e.g., Delete, Update Status) */
+  add?: { enabled?: boolean }
+  sorting?: { enabled?: boolean; multiSort?: boolean; enableRemoval?: boolean }
+  columnVisibility?: { enabled?: boolean; defaultHidingEnabled?: boolean }
+  rowSelection?: { enabled?: boolean; multiSelect?: boolean }
+  tableDesign?: { striped?: boolean; hoverable?: boolean }
   bulkActions?: {
-    /**
-     * Controls for the bulk delete action.
-     */
     delete?: { enabled?: boolean }
-    /**
-     * Controls for the bulk status update action.
-     */
     updateStatus?: { enabled?: boolean }
-    /**
-     * Controls for the export action.
-     */
     export?: { enabled?: boolean }
   }
-  /** Controls for pagination */
-  pagination?: {
-    /** Whether pagination controls are displayed.
-     * @default true
-     */
-    enabled?: boolean;
-    pageSizeOptions?: number[];
-  }
+  pagination?: { enabled?: boolean; pageSizeOptions?: number[] }
 }
 
 interface ResourceFilters {
@@ -116,7 +52,11 @@ interface ResourceFilters {
   [key: string]: string | number | undefined
 }
 
-interface ResourceListPageProps<TData extends { id: string }, TValue> {
+/**
+ * FIX: Loosened the constraint from 'id: string' to 'id?: string'.
+ * This allows Zod-inferred types where ID might be optional to work without 'any'.
+ */
+interface ResourceListPageProps<TData extends { id?: string }, TValue> {
   title: string
   description: string
   addHref?: string
@@ -147,7 +87,7 @@ const DEFAULT_INITIAL_FILTERS: ResourceFilters = {
   search: "",
 }
 
-export function ResourceListPage<TData extends { id: string }, TValue>({
+export function ResourceListPage<TData extends { id?: string }, TValue>({
   title,
   description,
   addHref,
@@ -188,59 +128,49 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
     setSorting([])
   }
 
-  // Extract config values with defaults
   const {
     add: addConfig = {},
     bulkActions: bulkActionsConfig = {},
     sorting: sortingConfig = {},
     columnVisibility: columnVisibilityConfig = {},
     rowSelection: rowSelectionConfig = {},
-    tableDesign: tableDesignConfig = {},
     pagination: paginationConfig = {},
   } = config;
 
-  const enableSorting = sortingConfig.enabled !== false;
-  const enableMultiSort = sortingConfig.multiSort !== false;
-  const enableSortingRemoval = sortingConfig.enableRemoval !== false;
-  const enableRowSelection = rowSelectionConfig.enabled !== false;
-  const showColumnVisibilityToggle = columnVisibilityConfig.enabled !== false;
-  const showPagination = paginationConfig.enabled !== false;
-
-  // The actual columns are passed directly, and useDataTable will conditionally add the selectColumn.
-  const tableColumns = columns;
-
   const table = useDataTable({
-    data: resources, // Data for the table
-    columns: tableColumns, // Columns definition
-    pageCount: meta.totalPages, // Total number of pages
-    page: filters.page, // Current page number
-    pageSize: filters.pageSize, // Number of items per page
-    onPaginationChange: (page, pageSize) => { // Callback for pagination changes
-      setFilters({ ...filters, page, pageSize });
-    },
-    sorting, // Current sorting state
-    onSortingChange: setSorting, // Callback for sorting changes
-    // New sorting configuration
-    enableSorting: enableSorting,
-    enableMultiSort: enableMultiSort,
-    enableSortingRemoval: enableSortingRemoval,
-    // New row selection configuration
-    enableRowSelection: enableRowSelection,
+    data: resources,
+    columns,
+    pageCount: meta.totalPages,
+    page: filters.page,
+    pageSize: filters.pageSize,
+    onPaginationChange: (page, pageSize) => setFilters({ ...filters, page, pageSize }),
+    sorting,
+    onSortingChange: setSorting,
+    enableSorting: sortingConfig.enabled !== false,
+    enableMultiSort: sortingConfig.multiSort !== false,
+    enableSortingRemoval: sortingConfig.enableRemoval !== false,
+    enableRowSelection: rowSelectionConfig.enabled !== false,
   })
 
-  // This is a bit of a hack to pass the table instance up to the parent component if needed.
-  // It's not ideal, but it works for now.
-  useState(() => {
-    onTableReady?.(table)
-  })
+  // Hook for passing table instance
+  useState(() => { onTableReady?.(table) })
 
   const singularResourceName = resourceName ? pluralize.singular(resourceName) : "item"
   const pluralResourceName = resourceName || "items"
 
+  /**
+   * Helper to safely extract string IDs.
+   * Filters out any potential undefined IDs to satisfy mutation types.
+   */
+  const getSelectedIds = () => 
+    table.getFilteredSelectedRowModel().rows
+      .map((row) => row.original.id)
+      .filter((id): id is string => typeof id === "string")
+
   const handleBulkDelete = () => {
-    const selectedIds = table.getFilteredSelectedRowModel().rows.map((row) => row.original.id)
+    const selectedIds = getSelectedIds()
     if (selectedIds.length === 0) {
-      toast.warning(`Please select at least one ${singularResourceName} to delete.`)
+      toast.warning(`Please select at least one ${singularResourceName}.`)
       return
     }
     setItemIdsToDelete(selectedIds)
@@ -253,20 +183,22 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
         table.toggleAllPageRowsSelected(false)
         setItemIdsToDelete([])
       },
-      onError: () => {
-        setItemIdsToDelete([])
-      },
+      onError: () => setItemIdsToDelete([]),
     })
   }, [bulkDeleteMutation, itemIdsToDelete, table])
 
   const handleBulkStatusChange = (isActive: boolean) => {
     if (!bulkStatusUpdateMutation) return
-    const selectedIds = table.getFilteredSelectedRowModel().rows.map((row) => row.original.id)
+    const selectedIds = getSelectedIds()
     if (selectedIds.length === 0) {
-      toast.warning(`Please select at least one ${singularResourceName} to update.`)
+      toast.warning(`Please select at least one ${singularResourceName}.`)
       return
     }
-    bulkStatusUpdateMutation.mutate({ ids: selectedIds, data: { isActive } }, { onSuccess: () => table.toggleAllPageRowsSelected(false) })
+    // CONSISTENCY: Using isActive as the standardized boolean key
+    bulkStatusUpdateMutation.mutate(
+      { ids: selectedIds, data: { isActive } }, 
+      { onSuccess: () => table.toggleAllPageRowsSelected(false) }
+    )
   }
 
   const handleExport = () => {
@@ -281,9 +213,7 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
     xlsx.writeFile(workbook, `${pluralResourceName}-export.xlsx`)
   }
 
-  if (isError) {
-    return <div className="text-red-500">Error: {(error as Error).message}</div>
-  }
+  if (isError) return <div className="text-red-500 p-4 font-medium">Error: {(error as Error).message}</div>
 
   const showAddButton = addConfig.enabled !== false && (onAdd || addHref);
   const showBulkStatusUpdate = bulkStatusUpdateMutation && bulkActionsConfig.updateStatus?.enabled !== false;
@@ -291,26 +221,22 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
   const showExport = bulkActionsConfig.export?.enabled !== false;
   const showAnyBulkAction = resourceName && (showBulkStatusUpdate || showBulkDelete || showExport);
 
-  const dynamicFilters = filterDefinitions.map((def) => ({
-    ...def,
-    value: String(filters[def.key] ?? ""),
-    onChange: (value: string) => setFilters({ ...filters, [def.key]: value, page: 1 }),
-  }))
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <PageHeader title={title} description={description}>
-        {showAddButton && onAdd ? (
-          <Button onClick={onAdd} size="sm">
-            <Plus className="mr-2 h-4 w-4" /> {addLabel}
-          </Button>
-        ) : showAddButton && addHref ? (
-          <Button asChild size="sm">
-            <Link href={addHref}>
-              <Plus className="mr-2 h-4 w-4" /> {addLabel}
-            </Link>
-          </Button>
-        ) : null}
+        {showAddButton && (
+          onAdd ? (
+            <Button onClick={onAdd} size="sm" className="bg-primary shadow-sm">
+              <Plus className="mr-2 h-4 w-4" /> {addLabel || `Add ${singularResourceName}`}
+            </Button>
+          ) : (
+            <Button asChild size="sm" className="bg-primary shadow-sm">
+              <Link href={addHref!}>
+                <Plus className="mr-2 h-4 w-4" /> {addLabel || `Add ${singularResourceName}`}
+              </Link>
+            </Button>
+          )
+        )}
       </PageHeader>
 
       <DataTableFilterToolbar
@@ -319,7 +245,11 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
         searchPlaceholder={searchPlaceholder}
         onReset={handleReset}
         isFiltered={isFiltered}
-        filters={dynamicFilters}
+        filters={filterDefinitions.map((def) => ({
+          ...def,
+          value: String(filters[def.key] ?? ""),
+          onChange: (val: string) => setFilters({ ...filters, [def.key]: val, page: 1 }),
+        }))}
       />
 
       <DataTableCard
@@ -329,14 +259,14 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
         total={meta.total}
         bulkActions={
           showAnyBulkAction
-            ? (table) => (
-              <>
+            ? (tableInstance) => (
+              <div className="flex items-center gap-2">
                 {showBulkStatusUpdate && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8" disabled={bulkStatusUpdateMutation?.isPending}>
+                      <Button variant="outline" size="sm" className="h-8 border-dashed" disabled={bulkStatusUpdateMutation?.isPending}>
                         {bulkStatusUpdateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CircleDot className="mr-2 h-4 w-4" />}
-                        Status ({table.getFilteredSelectedRowModel().rows.length})
+                        Status ({tableInstance.getFilteredSelectedRowModel().rows.length})
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
@@ -347,29 +277,29 @@ export function ResourceListPage<TData extends { id: string }, TValue>({
                 )}
                 {showExport && (
                   <Button variant="outline" size="sm" className="h-8" onClick={handleExport}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Export
+                    <Download className="mr-2 h-4 w-4" /> Export
                   </Button>
                 )}
                 {showBulkDelete && (
                   <Button variant="destructive" size="sm" className="h-8" onClick={handleBulkDelete} disabled={bulkDeleteMutation?.isPending}>
                     {bulkDeleteMutation?.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2 h-4 w-4" />}
-                    Delete ({table.getFilteredSelectedRowModel().rows.length})
+                    Delete ({tableInstance.getFilteredSelectedRowModel().rows.length})
                   </Button>
                 )}
-              </>
+              </div>
             )
             : undefined
         }
       >
-        {showColumnVisibilityToggle && <DataTableViewOptions table={table} />}
+        {columnVisibilityConfig.enabled !== false && <DataTableViewOptions table={table} />}
       </DataTableCard>
+
       {showBulkDelete && (
         <ConfirmDialog
           open={itemIdsToDelete.length > 0}
           onOpenChange={(open) => !open && setItemIdsToDelete([])}
           title={`Delete ${pluralize(singularResourceName, itemIdsToDelete.length)}`}
-          description={`Are you sure you want to delete ${itemIdsToDelete.length} ${pluralize(singularResourceName, itemIdsToDelete.length)}? This action cannot be undone.`}
+          description={`Are you sure you want to delete ${itemIdsToDelete.length} selected ${pluralize(singularResourceName, itemIdsToDelete.length)}? This action is permanent.`}
           onConfirm={confirmBulkDelete}
           isLoading={bulkDeleteMutation?.isPending}
           variant="destructive"

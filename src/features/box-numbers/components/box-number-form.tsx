@@ -2,18 +2,18 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useForm, FieldErrors } from "react-hook-form"
+import { useForm, FieldErrors, Resolver } from "react-hook-form"
 import { useQueryClient } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, Save, X, Edit3, Eye, Package } from "lucide-react"
 
 import { TextField } from "@/components/forms/text-field"
 import { CheckboxField } from "@/components/forms/checkbox-field"
 import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
 
-import { boxNumberSchema, BoxNumber } from "../box-number.schema"
+import { boxNumberSchema, type BoxNumber } from "../box-number.schema"
 import { useCreateBoxNumber, useUpdateBoxNumber } from "../box-number.api"
 import { BOX_NUMBERS_BASE_HREF } from "@/config/paths"
 
@@ -23,6 +23,10 @@ interface BoxNumberFormProps {
   isViewMode?: boolean
 }
 
+/**
+ * Updated BoxNumberForm to match the new boolean 'isActive' schema.
+ * Implements the Circuit-Breaker type casting to avoid TypeScript inference loops.
+ */
 export function BoxNumberForm({ initialData, onSuccess, isViewMode: initialIsViewMode = false }: BoxNumberFormProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -32,25 +36,33 @@ export function BoxNumberForm({ initialData, onSuccess, isViewMode: initialIsVie
   const [mode, setMode] = useState<"view" | "edit" | "create">(
     initialIsViewMode ? "view" : initialData ? "edit" : "create"
   )
+  
   const isViewMode = mode === "view"
-
   const isPending = isCreating || isUpdating
   const isEditMode = !!initialData && mode !== "create"
 
-  const form = useForm<BoxNumberFormValues>({
-    resolver: zodResolver(boxNumberSchema),
+  /**
+   * Form initialization.
+   * We cast the resolver to bypass the 'unknown' type inference bug.
+   */
+  const form = useForm<BoxNumber>({
+    resolver: zodResolver(boxNumberSchema) as unknown as Resolver<BoxNumber>,
     defaultValues: initialData
-      ? { ...initialData, logo: undefined } // Set logo to undefined to avoid validation issues with URL string
+      ? { 
+          ...initialData,
+          description: initialData.description || "",
+        }
       : {
           name: "",
-          logo: undefined,
-          isActive: true,
+          location: "",
+          description: "",
+          isActive: true, // Matching the boolean default from your new schema
         },
   })
 
-  const onFormError = (errors: FieldErrors<BoxNumberFormValues>) => {
-    console.error("BoxNumber form validation errors:", errors)
-    toast.error("Please fill all required fields correctly.")
+  const onFormError = (errors: FieldErrors<BoxNumber>) => {
+    console.error("Form Validation Errors:", errors)
+    toast.error("Please fill the required fields correctly.")
   }
 
   const handleCancel = () => {
@@ -61,114 +73,110 @@ export function BoxNumberForm({ initialData, onSuccess, isViewMode: initialIsVie
     }
   }
 
-  function onSubmit(data: BoxNumberFormValues) {
-    if (isEditMode && initialData) {
+  function onSubmit(data: BoxNumber) {
+    if (isEditMode && initialData?.id) {
       updateBoxNumber(
         { id: initialData.id, data },
         {
-          onSuccess: (updatedBoxNumber: BoxNumber) => {
-            toast.success("Box Number updated successfully")
-            queryClient.invalidateQueries({ queryKey: ["boxNumbers"] })
-            if (onSuccess) {
-              onSuccess(updatedBoxNumber)
-            } else {
-              router.push(BOX_NUMBERS_BASE_HREF)
-            }
+          onSuccess: (updatedData) => {
+            toast.success("Box details updated successfully.")
+            queryClient.invalidateQueries({ queryKey: ["box-numbers"] })
+            onSuccess ? onSuccess(updatedData) : router.push(BOX_NUMBERS_BASE_HREF)
           },
-          onError: (error) => {
-            toast.error("Failed to update boxNumber: " + error.message)
-          },
+          onError: (error) => toast.error(error.message),
         }
       )
     } else {
       createBoxNumber(data, {
-        onSuccess: (newBoxNumber) => {
-          toast.success("Box Number created successfully")
-          queryClient.invalidateQueries({ queryKey: ["boxNumbers"] })
-          if (onSuccess) {
-            onSuccess(newBoxNumber)
-          } else {
-            router.push(BOX_NUMBERS_BASE_HREF)
-          }
+        onSuccess: (newData) => {
+          toast.success("New Box created successfully.")
+          queryClient.invalidateQueries({ queryKey: ["box-numbers"] })
+          onSuccess ? onSuccess(newData) : router.push(BOX_NUMBERS_BASE_HREF)
         },
-        onError: (error) => {
-          toast.error("Failed to create boxNumber: " + error.message)
-        },
+        onError: (error) => toast.error(error.message),
       })
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="relative p-4 space-y-4">
-        {isViewMode && (
-          <div className="absolute top-4 right-4 z-10">
-            <Button size="sm" type="button" onClick={(e) => {
-              e.preventDefault()
-              setMode("edit")
-            }}>
-              Edit
-            </Button>
+      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-6 p-1">
+        
+        {/* Mode Indicator Header */}
+        <div className="flex items-center justify-between bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-4">
+          <div className="flex items-center gap-3 text-blue-700 font-semibold text-sm">
+            <Package className="h-5 w-5" />
+            <span className="uppercase tracking-wider">
+              {isViewMode ? "View Details" : isEditMode ? "Edit Box" : "Create New Box"}
+            </span>
           </div>
-        )}
-        <div className={isViewMode ? "pt-10" : ""}>
+          {isViewMode && (
+            <Button size="sm" variant="outline" onClick={() => setMode("edit")} className="bg-white hover:bg-blue-50">
+              <Edit3 className="mr-2 h-4 w-4" /> Edit Configuration
+            </Button>
+          )}
+        </div>
+
+        {/* Form Fields Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <TextField
             control={form.control}
             name="name"
-            label="Box Name/Number"
-            placeholder="e.g., Box-101"
+            label="Box Name / Number"
+            placeholder="e.g. Box-A1"
             required
             readOnly={isViewMode}
+            inputClassName="focus:ring-blue-500"
           />
+
           <TextField
             control={form.control}
             name="location"
-            label="Location"
-            placeholder="e.g., Front Shelf"
+            label="Storage Location"
+            placeholder="e.g. Shelf 4, Row B"
             required
-            isViewMode={isViewMode}
-          />
-          <TextField
-            control={form.control}
-            name="description"
-            label="Description"
-            placeholder="Optional description"
-            isViewMode={isViewMode}
-          />
-          <CheckboxField
-            control={form.control}
-            name="status"
-            label="Status (Active/Inactive)"
-            className="rounded-md border p-3"
-            disabled={isViewMode} // Assuming status can be toggled
-            // You might need to adjust this to a RadioGroupField or SelectField
-            // if the schema's enum is not directly compatible with a boolean checkbox.
-            // For now, assuming a boolean representation for simplicity.
-            // If status is "ACTIVE" or "INACTIVE", you'd need a different component.
-            // Example:
-            // <RadioGroupField
-            //   control={form.control}
-            //   name="status"
-            //   label="Status"
-            //   options={[
-            //     { label: "Active", value: "ACTIVE" },
-            //     { label: "Inactive", value: "INACTIVE" },
-            //   ]}
-            //   readOnly={isViewMode}
-            // />
+            readOnly={isViewMode}
+            inputClassName="focus:ring-blue-500"
           />
         </div>
-        <div className="flex justify-end gap-2 pt-4">
-          {isViewMode ? (
-            <Button variant="outline" type="button" onClick={handleCancel}>Close</Button>
-          ) : (
-            <>
-              <Button variant="outline" type="button" onClick={handleCancel}>Cancel</Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? "Save Changes" : "Save BoxNumber"}
-              </Button>
-            </>
+
+        <TextField
+          control={form.control}
+          name="description"
+          label="Additional Description"
+          placeholder="Brief notes about this box..."
+          readOnly={isViewMode}
+          inputClassName="focus:ring-blue-500"
+        />
+
+        {/* Status Toggle */}
+        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 w-full md:w-fit min-w-[200px]">
+          <CheckboxField
+            control={form.control}
+            name="isActive"
+            label="Mark as Active"
+            disabled={isViewMode}
+          />
+          <p className="text-[10px] text-muted-foreground mt-1 ml-6">
+            Inactive boxes may be hidden from selection lists.
+          </p>
+        </div>
+
+        {/* Actions Footer */}
+        <div className="flex justify-end items-center gap-4 pt-6 border-t mt-6">
+          <Button variant="ghost" type="button" onClick={handleCancel} disabled={isPending} className="text-slate-500">
+            <X className="mr-2 h-4 w-4" /> {isViewMode ? "Close" : "Cancel"}
+          </Button>
+          
+          {!isViewMode && (
+            <Button type="submit" disabled={isPending} className="min-w-[160px] bg-blue-600 hover:bg-blue-700 shadow-md">
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {isEditMode ? "Update Changes" : "Save Box Number"}
+            </Button>
           )}
         </div>
       </form>

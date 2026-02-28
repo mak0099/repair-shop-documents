@@ -2,12 +2,13 @@
 
 import { useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { format } from "date-fns"
+import type { UseMutationResult } from "@tanstack/react-query"
 
 import { ResourceListPage } from "@/components/shared/resource-list-page"
 import { ResourceActions } from "@/components/shared/resource-actions"
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header"
-import { ImageCell } from "@/components/shared/data-table-cells"
+import { ImageCell, DateCell } from "@/components/shared/data-table-cells"
+import { Badge } from "@/components/ui/badge"
 
 import {
   useExpenses,
@@ -17,7 +18,6 @@ import {
 } from "../expense.api"
 import { Expense } from "../expense.schema"
 import { useExpenseModal } from "../expense-modal-context"
-import { MasterSetting } from "@/features/master-settings"
 
 const INITIAL_FILTERS = {
   search: "",
@@ -25,8 +25,11 @@ const INITIAL_FILTERS = {
   pageSize: 10,
 }
 
-interface ExpenseInList extends Expense {
-    category?: Pick<MasterSetting, 'id' | 'label' | 'value'>;
+/**
+ * Extended type to handle labels and ensure safe property access
+ */
+interface ExpenseWithLabels extends Expense {
+  categoryLabel?: string;
 }
 
 export function ExpenseList() {
@@ -39,39 +42,65 @@ export function ExpenseList() {
     () => [
       {
         accessorKey: "title",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Expense Title" />,
         cell: ({ row }) => (
-          <div className="font-medium cursor-pointer hover:underline" onClick={() => openModal({ initialData: row.original, isViewMode: true })}>
+          <div 
+            className="font-semibold text-slate-700 cursor-pointer hover:text-blue-600 transition-colors" 
+            onClick={() => openModal({ initialData: row.original, isViewMode: true })}
+          >
             {row.getValue("title")}
+            {row.original.vendorName && (
+              <p className="text-[10px] text-slate-400 font-normal">To: {row.original.vendorName}</p>
+            )}
           </div>
         ),
       },
       {
         accessorKey: "amount",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Amount" />,
-        cell: ({ row }) => `€${row.original.amount.toFixed(2)}`,
+        cell: ({ row }) => (
+          <span className="font-bold text-slate-900">
+            ৳{row.original.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        ),
       },
       {
         accessorKey: "date",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
-        cell: ({ row }) => format(new Date(row.original.date), "PPP"),
+        cell: ({ row }) => <DateCell date={row.original.date} />,
       },
       {
-        id: "category",
+        accessorKey: "categoryId",
         header: "Category",
         cell: ({ row }) => {
-            const expense = row.original as ExpenseInList;
-            return expense.category?.label ?? "N/A";
+          const item = row.original as ExpenseWithLabels;
+          return (
+            <Badge variant="secondary" className="font-medium bg-slate-100 text-slate-600 border-none">
+              {item.categoryLabel || "General"}
+            </Badge>
+          );
         },
       },
       {
-        accessorKey: "branch_id",
-        header: "Branch ID",
+        accessorKey: "paymentMethod",
+        header: "Payment",
+        cell: ({ row }) => (
+          <span className="text-[11px] font-bold uppercase text-slate-400 tracking-tight">
+            {row.original.paymentMethod?.replace("_", " ")}
+          </span>
+        ),
       },
       {
-        accessorKey: "attachment_url",
-        header: "Attachment",
-        cell: ({ row }) => <ImageCell src={row.original.attachment_url} alt={row.original.title} />,
+        accessorKey: "attachmentUrl",
+        header: "Receipt",
+        cell: ({ row }) => (
+          <ImageCell 
+            src={row.original.attachmentUrl} 
+            alt={row.original.title} 
+            size={36}
+            shape="rounded"
+          />
+        ),
       },
       {
         id: "actions",
@@ -94,20 +123,17 @@ export function ExpenseList() {
   )
 
   return (
-    <>
-      <ResourceListPage<Expense, unknown>
-        title="Expenses"
-        resourceName="expenses"
-        description="Manage business expenses"
-        onAdd={() => openModal()}
-        addLabel="Add Expense"
-        columns={columns}
-        useResourceQuery={useExpenses}
-        bulkDeleteMutation={bulkDeleteMutation}
-        initialFilters={INITIAL_FILTERS}
-        searchPlaceholder="Search by title..."
-        filterDefinitions={[]}
-      />
-    </>
+    <ResourceListPage<Expense, unknown>
+      title="Expense Ledger"
+      resourceName="expenses"
+      description="Track and audit your shop's operational costs."
+      onAdd={() => openModal()}
+      addLabel="New Expense"
+      columns={columns}
+      useResourceQuery={useExpenses}
+      bulkDeleteMutation={bulkDeleteMutation}
+      initialFilters={INITIAL_FILTERS}
+      searchPlaceholder="Search by title or vendor..."
+    />
   )
 }

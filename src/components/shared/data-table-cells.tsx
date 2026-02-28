@@ -2,66 +2,80 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { CheckCircle } from "lucide-react"
+import { CheckCircle, XCircle, ImageIcon } from "lucide-react"
+import { format, isValid } from "date-fns"
 
 import { cn } from "@/lib/utils"
 
+// --- StatusCell ---
 interface StatusCellProps {
   isActive: boolean | undefined | null
 }
 
 export function StatusCell({ isActive }: StatusCellProps) {
-  return isActive ? (
-    <div className="flex items-center justify-start px-4">
-      <CheckCircle className="h-4 w-4 text-green-500" />
+  return (
+    <div className="flex items-center justify-center w-full">
+      {isActive ? (
+        <CheckCircle className="h-4 w-4 text-emerald-500" />
+      ) : (
+        <XCircle className="h-4 w-4 text-slate-300" />
+      )}
     </div>
-  ) : null
+  )
 }
 
+// --- DateCell ---
 interface DateCellProps {
   date: string | Date | undefined | null
   placeholder?: string
+  includeTime?: boolean
 }
 
-export function DateCell({ date, placeholder = "N/A" }: DateCellProps) {
+export function DateCell({ 
+  date, 
+  placeholder = "N/A", 
+  includeTime = false 
+}: DateCellProps) {
   if (!date) {
-    return <span className="text-muted-foreground">{placeholder}</span>
+    return <span className="text-muted-foreground italic text-xs">{placeholder}</span>
   }
-  try {
-    return <span>{new Date(date).toLocaleDateString()}</span>
-  } catch (error) {
-    return <span className="text-destructive">Invalid Date</span>
+
+  const dateObj = typeof date === "string" ? new Date(date) : date
+
+  if (!isValid(dateObj)) {
+    return <span className="text-destructive text-xs">Invalid Date</span>
   }
+
+  return (
+    <span className="text-sm font-medium text-slate-600">
+      {format(dateObj, includeTime ? "dd MMM yyyy, p" : "dd MMM yyyy")}
+    </span>
+  )
 }
 
+// --- ImageCell ---
 interface ImageCellProps {
   src: string | null | undefined
   alt: string
   shape?: "circle" | "rounded" | "square"
-  size?: number // Corresponds to h-`size` w-`size` in Tailwind
-  fallbackText?: React.ReactNode
+  size?: number 
   className?: string
 }
 
+/**
+ * Main ImageCell component.
+ * Uses a unique 'key' based on 'src' to automatically reset internal error states
+ * without triggering cascading useEffect renders.
+ */
 export function ImageCell({
   src,
   alt,
   shape = "rounded",
-  size = 10,
-  fallbackText = (
-    <>
-      No
-      <br />
-      Image
-    </>
-  ),
+  size = 40,
   className,
 }: ImageCellProps) {
-  const [error, setError] = useState(false)
-
   const containerClasses = cn(
-    "relative flex items-center justify-center text-center text-xs text-gray-400 bg-gray-100",
-    `h-${size} w-${size}`,
+    "relative flex shrink-0 items-center justify-center overflow-hidden bg-slate-100 border border-slate-200 shadow-sm",
     {
       "rounded-full": shape === "circle",
       "rounded-md": shape === "rounded",
@@ -70,13 +84,52 @@ export function ImageCell({
     className
   )
 
-  if (!src || error) {
-    return <div className={containerClasses}>{fallbackText}</div>
+  const imageSizeStyle = {
+    width: size,
+    height: size,
   }
 
   return (
-    <div className={containerClasses}>
-      <Image src={src} alt={alt} fill className={cn("object-contain", { "rounded-full": shape === "circle", "rounded-md": shape === "rounded" })} onError={() => setError(true)} />
+    <div className={containerClasses} style={imageSizeStyle}>
+      {/* The 'key' prop here is the magic. When 'src' changes, React resets 
+        the internal state of InternalImageContent entirely.
+      */}
+      <InternalImageContent 
+        key={src || "no-src"} 
+        src={src} 
+        alt={alt} 
+        size={size} 
+      />
     </div>
+  )
+}
+
+/**
+ * Internal helper to encapsulate error state.
+ */
+function InternalImageContent({ 
+  src, 
+  alt, 
+  size 
+}: { 
+  src: string | null | undefined; 
+  alt: string; 
+  size: number 
+}) {
+  const [hasError, setHasError] = useState(false)
+
+  if (!src || hasError) {
+    return <ImageIcon className="h-1/2 w-1/2 text-slate-300" />
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes={`${size}px`}
+      className="object-cover transition-transform duration-300 hover:scale-110"
+      onError={() => setHasError(true)}
+    />
   )
 }

@@ -1,44 +1,39 @@
 import { z } from "zod";
+import { BaseEntity } from "@/types/common";
 
-/**
- * Enhanced Stock View Schema
- * Optimized for mobile shop inventory tracking.
- */
 export const stockSchema = z.object({
-  id: z.string(), // Item or Variant ID
-  itemName: z.string(),
-  sku: z.string(),
+  itemName: z.string().min(1, "Item name is required"),
+  sku: z.string().min(1, "SKU is required"),
   
   // Serialized Tracking
-  imei: z.string().optional(), // Specific for mobile phones
+  imei: z.string().optional().nullable(),
   
-  // Dynamic specs from our Attributes module
-  // e.g., { "RAM": "8GB", "COLOR": "Deep Purple", "GRADE": "A" }
+  // Dynamic specs
   attributes: z.record(z.string(), z.string()), 
   
   categoryName: z.string(),
   brandName: z.string(),
-  modelName: z.string().optional(),
+  modelName: z.string().optional().nullable(),
   
   // Logistics & Location
-  boxNumber: z.string().optional(), // From BoxNumber Master
-  storageNote: z.string().optional(), // Our newly renamed "Micro-location" field
+  boxNumber: z.string().optional().nullable(),
+  boxLocationName: z.string().optional().nullable(),
+  storageNote: z.string().optional().nullable(), 
   
-  // Inventory Status (From Master Settings)
-  status: z.string(), // e.g., "Ready for Sale", "In Testing", "Reserved"
+  // Unit (e.g., Pcs, Set, Box)
+  unit: z.string().optional().default("Pcs"), // <--- FIX: Added unit property
+  
+  status: z.string(), 
   condition: z.enum(["New", "Used"]),
   
-  // Quantity metrics
-  stockQuantity: z.number().default(0),
-  lowStockThreshold: z.number().default(2),
+  stockQuantity: z.number().nonnegative(),
+  lowStockThreshold: z.number().nonnegative(),
   
-  // Financials
-  purchasePrice: z.number().optional(), // Useful for calculating total inventory value
-  sellingPrice: z.number(),
+  purchasePrice: z.number().optional().nullable(),
+  sellingPrice: z.number().positive(),
   
-  isActive: z.boolean().default(true),
-  createdAt: z.string().optional(),
-  lastUpdated: z.string().optional(),
+  isActive: z.boolean(),
 });
 
-export type Stock = z.infer<typeof stockSchema>;
+export type StockFormValues = z.infer<typeof stockSchema>;
+export interface Stock extends BaseEntity, StockFormValues {}

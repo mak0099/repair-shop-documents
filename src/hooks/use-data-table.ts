@@ -9,6 +9,8 @@ import {
   type PaginationState,
   type SortingState,
   getFilteredRowModel,
+  type OnChangeFn,
+  type Updater,
 } from "@tanstack/react-table"
 import { selectColumn } from "@/components/shared/data-table-helpers"
 
@@ -20,7 +22,7 @@ interface UseDataTableProps<TData, TValue> {
   pageSize?: number
   onPaginationChange?: (page: number, pageSize: number) => void
   sorting?: SortingState
-  onSortingChange?: (sorting: SortingState) => void // Renamed to onSortingChangeProp to avoid conflict with internal state
+  onSortingChange?: (sorting: SortingState) => void
   enableSorting?: boolean
   enableMultiSort?: boolean
   enableSortingRemoval?: boolean
@@ -41,16 +43,44 @@ export function useDataTable<TData, TValue>({
   enableSortingRemoval = true,
   enableRowSelection = true,
 }: UseDataTableProps<TData, TValue>): Table<TData> {
+  
   const pagination: PaginationState = {
     pageIndex: page - 1,
     pageSize,
   }
 
-  const finalColumns = useMemo(() => {
-    return enableRowSelection ? [selectColumn, ...columns] : columns;
+  /**
+   * FIX: Type the columns array as ColumnDef<TData, unknown>[]
+   * We use 'unknown' instead of 'any' for the cell value type.
+   * This is safe because Table doesn't care about the specific value type here.
+   */
+  const finalColumns = useMemo<ColumnDef<TData, unknown>[]>(() => {
+    return enableRowSelection 
+      ? [(selectColumn as ColumnDef<TData, unknown>), ...columns] 
+      : (columns as ColumnDef<TData, unknown>[]);
   }, [columns, enableRowSelection]);
 
-  const table = useReactTable({
+  /**
+   * Safe Pagination Updater Handler
+   */
+  const handlePaginationChange: OnChangeFn<PaginationState> = (updater: Updater<PaginationState>) => {
+    if (onPaginationChange) {
+      const nextState = typeof updater === "function" ? updater(pagination) : updater;
+      onPaginationChange(nextState.pageIndex + 1, nextState.pageSize);
+    }
+  };
+
+  /**
+   * Safe Sorting Updater Handler
+   */
+  const handleSortingChange: OnChangeFn<SortingState> = (updater: Updater<SortingState>) => {
+    if (onSortingChangeProp) {
+      const nextState = typeof updater === "function" ? updater(sorting) : updater;
+      onSortingChangeProp(nextState);
+    }
+  };
+
+  const table = useReactTable<TData>({
     data,
     columns: finalColumns,
     pageCount,
@@ -62,13 +92,8 @@ export function useDataTable<TData, TValue>({
     enableSorting,
     enableMultiSort,
     enableSortingRemoval,
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function" && onPaginationChange) {
-        const newState = updater(pagination)
-        onPaginationChange(newState.pageIndex + 1, newState.pageSize)
-      }
-    },
-    onSortingChange: onSortingChangeProp,
+    onPaginationChange: handlePaginationChange,
+    onSortingChange: handleSortingChange,
     manualPagination: true,
     manualSorting: true,
     getCoreRowModel: getCoreRowModel(),

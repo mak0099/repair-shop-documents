@@ -1,12 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Control, FieldValues, Path } from "react-hook-form"
+import { Control, FieldValues, Path, useController } from "react-hook-form"
+import { Check, ChevronsUpDown, Plus, Loader2, Search } from "lucide-react"
 
-import { Check, ChevronsUpDown, Plus, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   Command,
   CommandEmpty,
@@ -21,13 +20,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
 
+/**
+ * Professional Generic Interface for Combobox.
+ * TFieldValues links directly to the specific form schema (e.g. CustomerFormValues).
+ */
 interface ComboboxWithAddProps<TFieldValues extends FieldValues> {
   control: Control<TFieldValues>
   name: Path<TFieldValues>
   label: string
   placeholder: string
-  searchPlaceholder: string
+  searchPlaceholder?: string
   noResultsMessage?: string
   options: { value: string; label: string }[]
   onAdd?: () => void
@@ -35,6 +39,7 @@ interface ComboboxWithAddProps<TFieldValues extends FieldValues> {
   isLoading?: boolean
   disabled?: boolean
   readOnly?: boolean
+  className?: string
 }
 
 export function ComboboxWithAdd<TFieldValues extends FieldValues>({
@@ -42,7 +47,7 @@ export function ComboboxWithAdd<TFieldValues extends FieldValues>({
   name,
   label,
   placeholder,
-  searchPlaceholder,
+  searchPlaceholder = "Search options...",
   noResultsMessage = "No results found.",
   options,
   onAdd,
@@ -50,104 +55,118 @@ export function ComboboxWithAdd<TFieldValues extends FieldValues>({
   isLoading = false,
   disabled = false,
   readOnly = false,
+  className,
 }: ComboboxWithAddProps<TFieldValues>) {
-  const [open, setOpen] = React.useState(false);
-  const isDisabled = isLoading || disabled;
+  const [open, setOpen] = React.useState(false)
+  
+  // Find selected label for display
+  const getSelectedLabel = (value: string) => {
+    return options.find((opt) => opt.value === value)?.label || ""
+  }
 
   return (
     <FormField
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem>
-          <FormLabel className={cn("text-xs", required && !readOnly && "required")}>
+        <FormItem className={cn("space-y-1.5", className)}>
+          <FormLabel className={cn("text-[11px] font-bold uppercase tracking-wider text-slate-500", required && "after:content-['*'] after:ml-0.5 after:text-red-500")}>
             {label}
           </FormLabel>
+
           {readOnly ? (
             <FormControl>
               <Input
                 readOnly
-                tabIndex={-1}
-                className="cursor-default bg-muted/30 focus-visible:ring-0"
-                value={options.find((option) => option.value === field.value)?.label || ""}
+                value={getSelectedLabel(field.value)}
+                className="h-9 bg-slate-50/50 border-slate-200 cursor-default focus-visible:ring-0"
               />
             </FormControl>
           ) : (
-            <div className="flex items-end">
+            <div className="flex items-center">
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
-                      disabled={isDisabled}
                       variant="outline"
                       role="combobox"
+                      aria-expanded={open}
+                      disabled={isLoading || disabled}
                       className={cn(
-                        "flex-1 justify-between",
-                        onAdd && "rounded-r-none",
+                        "flex-1 justify-between h-9 px-3 font-normal border-slate-200 shadow-sm transition-all hover:bg-slate-50",
+                        onAdd && "rounded-r-none border-r-0",
                         !field.value && "text-muted-foreground"
                       )}
                     >
-                      {field.value
-                        ? options.find((option) => option.value === field.value)?.label
-                        : placeholder}
+                      <span className="truncate">
+                        {field.value ? getSelectedLabel(field.value) : placeholder}
+                      </span>
                       {isLoading ? (
-                        <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin opacity-50" />
                       ) : (
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        <ChevronsUpDown className="h-3 w-3 opacity-50" />
                       )}
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
-                <PopoverContent className="p-0" style={{ width: "var(--radix-popover-trigger-width)" }} align="start">
-                  <Command>
-                    <CommandInput placeholder={searchPlaceholder} />
-                    <CommandList>
-                      {isLoading ? (
-                        <div className="p-2 flex justify-center items-center">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : (
-                        <>
-                          <CommandEmpty>{noResultsMessage}</CommandEmpty>
-                          <CommandGroup>
-                            {options.map((option) => (
-                              <CommandItem
-                                value={option.label}
-                                key={option.value}
-                                onSelect={() => {
-                                  field.onChange(option.value)
-                                  setOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    option.value === field.value ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {option.label}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </>
-                      )}
+                <PopoverContent 
+                  className="p-0 border-slate-200 shadow-xl" 
+                  align="start"
+                  style={{ width: "var(--radix-popover-trigger-width)" }}
+                >
+                  <Command className="rounded-lg">
+                    <CommandInput 
+                      placeholder={searchPlaceholder} 
+                      className="h-9 text-sm"
+                    />
+                    <CommandList className="max-h-[200px] overflow-y-auto">
+                      <CommandEmpty className="py-4 text-center text-xs text-slate-500">
+                        {noResultsMessage}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {options.map((option) => (
+                          <CommandItem
+                            key={option.value}
+                            value={option.label}
+                            onSelect={() => {
+                              field.onChange(option.value)
+                              setOpen(false)
+                            }}
+                            className="flex items-center justify-between py-2 cursor-pointer text-sm"
+                          >
+                            <span className="truncate">{option.label}</span>
+                            <Check
+                              className={cn(
+                                "h-4 w-4 text-primary",
+                                field.value === option.value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
                     </CommandList>
                   </Command>
                 </PopoverContent>
               </Popover>
-              {onAdd && <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="rounded-l-none border-l-0"
-                onClick={onAdd}
-                disabled={isDisabled}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>}
+
+              {onAdd && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  disabled={isLoading || disabled}
+                  className="h-9 w-9 rounded-l-none border-slate-200 bg-slate-50 hover:bg-slate-100 shadow-sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onAdd();
+                  }}
+                >
+                  <Plus className="h-4 w-4 text-slate-600" />
+                </Button>
+              )}
             </div>
           )}
-          <FormMessage />
+          <FormMessage className="text-[10px] font-medium" />
         </FormItem>
       )}
     />

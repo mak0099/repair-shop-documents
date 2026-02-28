@@ -36,7 +36,7 @@ export function AttributeList() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {productAttributes.map((attr) => {
-          const attributeData = attributes?.find((a) => a.key === attr.key)
+          const attributeData = attributes?.data?.find((a) => a.key === attr.key)
 
           return (
             <Card key={attr.key} className="group border shadow-sm relative overflow-hidden transition-all duration-300">

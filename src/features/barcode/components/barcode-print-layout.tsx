@@ -1,9 +1,7 @@
 "use client"
 
 import { Loader2 } from "lucide-react"
-
 import { useItem } from "@/features/items/item.api"
-
 import { BarcodeRequest } from "../barcode.schema"
 
 interface BarcodePrintLayoutProps {
@@ -11,76 +9,97 @@ interface BarcodePrintLayoutProps {
 }
 
 export function BarcodePrintLayout({ data }: BarcodePrintLayoutProps) {
+  // data.itemId is used to fetch the specific item details
   const {
     data: item,
     isLoading,
     isError,
-  } = useItem(data.itemId, {
-    enabled: !!data.itemId,
-  })
+  } = useItem(data.itemId as string) // Ensured as string
 
   // Create an array based on requested quantity
   const labels = Array.from({ length: data.quantity })
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Loading item details...
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <Loader2 className="mb-2 h-6 w-6 animate-spin text-blue-600" />
+        <p className="text-sm font-medium">Fetching item details...</p>
       </div>
     )
   }
 
   if (isError || !item) {
     return (
-      <div className="text-center text-destructive py-20">
-        Could not load item details. Please select another item.
+      <div className="text-center text-destructive py-20 border-2 border-dashed rounded-xl">
+        Could not load item details. Please check the Item ID.
       </div>
     )
   }
 
-  const formattedPrice = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(item.price)
+  /**
+   * FIX: Changed 'item.price' to 'item.salePrice' to match our standardized schema.
+   * Using 'ja-JP' and 'JPY' as per your original code, but you can change it to 'en-BD'/'BDT' if needed.
+   */
+  const formattedPrice = new Intl.NumberFormat("ja-JP", { 
+    style: "currency", 
+    currency: "JPY" 
+  }).format(item.salePrice || 0)
 
   return (
-    <div id="printable-barcode-area" className="bg-white p-4 shadow-sm border rounded">
-      {/* Container for the labels */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-2">
+    <div id="printable-barcode-area" className="bg-white p-6 shadow-sm border rounded-xl overflow-hidden">
+      {/* Grid Layout for Labels */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-2">
         {labels.map((_, index) => (
           <div 
             key={index} 
-            className="border border-gray-300 p-2 flex flex-col items-center justify-center text-center space-y-1 bg-white"
+            className="border border-gray-200 p-3 flex flex-col items-center justify-center text-center space-y-2 bg-white rounded shadow-sm hover:border-blue-400 transition-colors"
             style={{ 
-              width: data.labelSize === "38x25mm" ? "150px" : "200px",
+              width: data.labelSize === "38x25mm" ? "160px" : "220px",
               height: "auto",
               pageBreakInside: "avoid"
             }}
           >
             {data.includeName && (
-              <span className="text-[10px] font-bold truncate w-full">
+              <span className="text-[10px] font-bold leading-tight uppercase tracking-tight text-slate-800 line-clamp-2 w-full">
                 {item.name}
               </span>
             )}
             
-            {/* Visual Barcode Placeholder */}
-            <div className="w-full h-10 bg-black flex items-center justify-center">
-                <div className="flex gap-[1px] h-8 bg-white w-[90%] items-center px-1">
-                    {[...Array(20)].map((_, i) => (
-                        <div key={i} className="bg-black flex-1 h-full" style={{ width: `${Math.random() * 3 + 1}px` }} />
+            {/* Visual Barcode Component Placeholder */}
+            <div className="w-full h-12 bg-slate-100 rounded flex items-center justify-center overflow-hidden border border-slate-200">
+                <div className="flex gap-[1.5px] h-10 bg-white w-[92%] items-center px-1">
+                    {[...Array(25)].map((_, i) => (
+                        <div 
+                          key={i} 
+                          className="bg-black flex-1 h-full" 
+                          style={{ width: `${(Math.random() * 2) + 0.5}px`, opacity: Math.random() > 0.1 ? 1 : 0.4 }} 
+                        />
                     ))}
                 </div>
             </div>
             
-            <span className="text-[9px] font-mono">{item.sku}</span>
-            
-            {data.includePrice && (
-              <span className="text-[11px] font-black">{formattedPrice}</span>
-            )}
+            <div className="flex flex-col items-center -space-y-1">
+                <span className="text-[9px] font-mono font-bold text-slate-500">
+                    {item.sku || "NO-SKU"}
+                </span>
+                
+                {data.includePrice && (
+                <span className="text-[12px] font-black text-blue-700">
+                    {formattedPrice}
+                </span>
+                )}
+            </div>
           </div>
         ))}
       </div>
 
+      {/* Print Specific Styles */}
       <style jsx global>{`
         @media print {
+          @page {
+            margin: 0;
+            size: auto;
+          }
           body * {
             visibility: hidden;
           }
@@ -92,6 +111,8 @@ export function BarcodePrintLayout({ data }: BarcodePrintLayoutProps) {
             left: 0;
             top: 0;
             width: 100%;
+            padding: 0;
+            margin: 0;
             border: none;
             box-shadow: none;
           }

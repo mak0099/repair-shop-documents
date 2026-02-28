@@ -1,4 +1,5 @@
-import { FilterOption } from "@/components/shared/resource-list-page"
+import { FilterOption } from "@/components/ui/filter-combobox"
+
 
 export const STOCK_STATUS_FILTER_OPTIONS: FilterOption[] = [
   { value: "ALL", label: "All Statuses" },

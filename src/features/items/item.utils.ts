@@ -1,4 +1,16 @@
-import { ItemVariant } from "./item.schema";
+import { Item } from "./item.schema";
+
+/**
+ * Maps UI attribute names to our flat schema keys.
+ * This ensures "RAM" from the generator becomes "ram" in the database.
+ */
+const ATTRIBUTE_MAP: Record<string, keyof Item> = {
+  RAM: "ram",
+  ROM: "rom",
+  Color: "color",
+  Grade: "grade",
+  Size: "size",
+};
 
 /**
  * Generates a slug-friendly SKU based on product name and attributes.
@@ -6,7 +18,7 @@ import { ItemVariant } from "./item.schema";
 export const generateSKU = (productName: string, attributes: Record<string, string>): string => {
   const prefix = productName.substring(0, 3).toUpperCase();
   const attrValues = Object.values(attributes)
-    .map((val) => val.substring(0, 3).toUpperCase())
+    .map((val) => val.substring(0, 3).replace(/\s/g, "").toUpperCase())
     .join("-");
   
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -32,30 +44,37 @@ export const generateCartesianProduct = (entries: [string, string[]][]): Record<
 };
 
 /**
- * Formats a display name for a variant (e.g., iPhone 13 - Red - 128GB)
- */
-export const formatVariantName = (productName: string, attributes: Record<string, string>): string => {
-  const attrString = Object.values(attributes).join(" - ");
-  return attrString ? `${productName} - ${attrString}` : productName;
-};
-
-/**
- * Transforms attribute selections into an initial array of ItemVariants.
+ * Transforms attribute selections into an initial array of Items (Partial).
  */
 export const createVariantsFromAttributes = (
   productName: string,
   selectedAttributes: Record<string, string[]>,
-  basePrice: number = 0
-): Partial<ItemVariant>[] => {
+  basePrices: { purchase: number; sale: number } = { purchase: 0, sale: 0 }
+): Partial<Item>[] => {
   const attributeEntries = Object.entries(selectedAttributes);
   const combinations = generateCartesianProduct(attributeEntries);
 
-  return combinations.map((combination) => ({
-    sku: generateSKU(productName, combination),
-    attributes: combination,
-    purchasePrice: basePrice,
-    sellingPrice: basePrice,
-    stockQuantity: 0,
-    isActive: true,
-  }));
+  return combinations.map((combination) => {
+    // Start with basic product data
+    const itemData: Partial<Item> = {
+      name: `${productName} (${Object.values(combination).join("/")})`,
+      sku: generateSKU(productName, combination),
+      purchasePrice: basePrices.purchase,
+      salePrice: basePrices.sale,
+      initialStock: 0,
+      isActive: true,
+      condition: "Used",
+    };
+
+    // Dynamically map combinations (RAM, ROM, etc.) to the flat schema keys
+    Object.entries(combination).forEach(([attrName, attrValue]) => {
+      const schemaKey = ATTRIBUTE_MAP[attrName];
+      if (schemaKey) {
+        // We use type assertion here to tell TS that this specific key is valid
+        (itemData[schemaKey] as string) = attrValue;
+      }
+    });
+
+    return itemData;
+  });
 };

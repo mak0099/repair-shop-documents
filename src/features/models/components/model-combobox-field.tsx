@@ -29,10 +29,16 @@ export function ModelComboboxField<TFieldValues extends FieldValues>({
 }: ModelComboboxFieldProps<TFieldValues>) {
   const { setValue } = useFormContext<TFieldValues>()
   const { openModal } = useModelModal()
+
+  /**
+   * Fetches models filtered by brandId. 
+   * The query is only enabled when a brandId is provided.
+   */
   const { data: modelsData, isLoading } = useModels(
-    { brand_id: brandId, pageSize: -1 }, // Fetch all models for the brand
-    { enabled: !!brandId },
-  )
+    brandId 
+      ? { brand_id: brandId, pageSize: -1 } 
+      : undefined
+  );
 
   const modelOptions = useMemo(() => {
     const models = modelsData?.data || []
@@ -43,32 +49,36 @@ export function ModelComboboxField<TFieldValues extends FieldValues>({
   }, [modelsData])
 
   const handleAddModel = () => {
+    if (!brandId) return; // Guard clause
+
     openModal({
       brandId,
       onSuccess: (newModel) => {
         if (newModel?.id) {
-          setValue(name, newModel.id as PathValue<TFieldValues, Path<TFieldValues>>)
+          setValue(
+            name, 
+            newModel.id as PathValue<TFieldValues, Path<TFieldValues>>,
+            { shouldValidate: true }
+          )
         }
       },
     })
   }
 
   return (
-    <>
-      <ComboboxWithAdd
-        control={control}
-        name={name}
-        label={label}
-        placeholder={placeholder}
-        searchPlaceholder="Search models..."
-        noResultsMessage="No model found."
-        options={modelOptions}
-        onAdd={handleAddModel}
-        required={required}
-        isLoading={isLoading}
-        disabled={disabled || !brandId}
-        readOnly={readOnly}
-      />
-    </>
+    <ComboboxWithAdd
+      control={control}
+      name={name}
+      label={label}
+      placeholder={placeholder}
+      searchPlaceholder="Search models..."
+      noResultsMessage="No model found."
+      options={modelOptions}
+      onAdd={handleAddModel}
+      required={required}
+      isLoading={isLoading}
+      disabled={disabled || !brandId}
+      readOnly={readOnly}
+    />
   )
 }

@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useForm, FieldErrors } from "react-hook-form"
+import { useForm, FieldErrors, Resolver } from "react-hook-form" // Added Resolver
 import { useQueryClient } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, Save, X } from "lucide-react"
 
 import { TextField } from "@/components/forms/text-field"
 import { TextareaField } from "@/components/forms/textarea-field"
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
 import { CategoryComboboxField } from "./category-combobox-field"
 
-import { categorySchema, CategoryFormValues, Category } from "../category.schema"
+import { categorySchema, type CategoryFormValues, type Category } from "../category.schema"
 import { useCreateCategory, useUpdateCategory } from "../category.api"
 
 const CATEGORIES_BASE_HREF = "/dashboard/options/categories"
@@ -36,50 +36,55 @@ export function CategoryForm({ initialData, onSuccess, isViewMode: initialIsView
     initialIsViewMode ? "view" : initialData ? "edit" : "create"
   )
   const isViewMode = mode === "view"
-
   const isPending = isCreating || isUpdating
   const isEditMode = !!initialData && mode !== "create"
 
+  /**
+   * FIX: Applied the Circuit Breaker casting to bypass the Boolean mismatch error.
+   */
   const form = useForm<CategoryFormValues>({
-    resolver: zodResolver(categorySchema),
-    defaultValues: initialData || {
-      name: "",
-      description: "",
-      parent_id: undefined,
-      isActive: true,
-    },
+    resolver: zodResolver(categorySchema) as unknown as Resolver<CategoryFormValues>,
+    defaultValues: initialData
+      ? { 
+          ...initialData,
+          description: initialData.description || "",
+          parentId: initialData.parentId || undefined,
+          isActive: initialData.isActive ?? true 
+        }
+      : {
+          name: "",
+          description: "",
+          parentId: undefined,
+          isActive: true, // Boolean Consistency
+        },
   })
 
+  const { control, handleSubmit } = form
+
   const onFormError = (errors: FieldErrors<CategoryFormValues>) => {
-    console.error("Category form validation errors:", errors)
-    toast.error("Please fill all required fields correctly.")
+    console.error("Category Validation Errors:", errors)
+    toast.error("Please fill the required fields correctly.")
   }
 
   const handleCancel = () => {
-    if (onSuccess) {
-      onSuccess(initialData as Category)
+    if (onSuccess && initialData) {
+      onSuccess(initialData)
     } else {
       router.push(CATEGORIES_BASE_HREF)
     }
   }
 
   function onSubmit(data: CategoryFormValues) {
-    if (isEditMode && initialData) {
+    if (isEditMode && initialData?.id) {
       updateCategory(
         { id: initialData.id, data },
         {
           onSuccess: (updatedCategory: Category) => {
             toast.success("Category updated successfully")
             queryClient.invalidateQueries({ queryKey: ["categories"] })
-            if (onSuccess) {
-              onSuccess(updatedCategory)
-            } else {
-              router.push(CATEGORIES_BASE_HREF)
-            }
+            onSuccess ? onSuccess(updatedCategory) : router.push(CATEGORIES_BASE_HREF)
           },
-          onError: (error) => {
-            toast.error("Failed to update category: " + error.message)
-          },
+          onError: (error) => toast.error("Update failed: " + error.message),
         }
       )
     } else {
@@ -87,62 +92,76 @@ export function CategoryForm({ initialData, onSuccess, isViewMode: initialIsView
         onSuccess: (newCategory) => {
           toast.success("Category created successfully")
           queryClient.invalidateQueries({ queryKey: ["categories"] })
-          if (onSuccess) {
-            onSuccess(newCategory)
-          } else {
-            router.push(CATEGORIES_BASE_HREF)
-          }
+          onSuccess ? onSuccess(newCategory) : router.push(CATEGORIES_BASE_HREF)
         },
-        onError: (error) => {
-          toast.error("Failed to create category: " + error.message)
-        },
+        onError: (error) => toast.error("Creation failed: " + error.message),
       })
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="relative p-4 space-y-4">
+      <form onSubmit={handleSubmit(onSubmit, onFormError)} className="relative p-4 space-y-5">
         {isViewMode && (
           <div className="absolute top-4 right-4 z-10">
-            <Button size="sm" type="button" onClick={(e) => { e.preventDefault(); setMode("edit"); }}>
-              Edit
+            <Button size="sm" variant="outline" type="button" onClick={() => setMode("edit")}>
+              Edit Category
             </Button>
           </div>
         )}
-        <div className={isViewMode ? "pt-10" : ""}>
-          <TextField control={form.control} name="name" label="Category Name" required readOnly={isViewMode} placeholder="e.g., Smartphones" />
-          <TextareaField control={form.control} name="description" label="Description" readOnly={isViewMode} placeholder="A short description of the category." />
+        
+        <div className={isViewMode ? "pt-10 space-y-4" : "space-y-4"}>
+          <TextField 
+            control={control} 
+            name="name" 
+            label="Category Name" 
+            required 
+            readOnly={isViewMode} 
+            placeholder="e.g., Smartphones" 
+          />
+          
+          <TextareaField 
+            control={control} 
+            name="description" 
+            label="Description" 
+            readOnly={isViewMode} 
+            placeholder="A short description of the category." 
+            className="min-h-[100px]"
+          />
+          
           <CategoryComboboxField
-            control={form.control}
-            name="parent_id"
+            control={control}
+            name="parentId" // Updated from parent_id
             label="Parent Category"
             placeholder="Select a parent category (optional)"
             disabled={isViewMode}
           />
-          <CheckboxField
-            control={form.control}
-            name="isActive"
-            label="Is Active?"
-            className="rounded-md border p-3"
-            disabled={isViewMode}
-          />
+          
+          <div className="pt-2">
+            <CheckboxField
+              control={control}
+              name="isActive"
+              label="Mark as Active"
+              className="rounded-lg border p-4 bg-slate-50/50"
+              disabled={isViewMode}
+            />
+          </div>
         </div>
-        <div className="flex justify-end gap-2 pt-4">
-          {isViewMode ? (
-            <Button variant="outline" type="button" onClick={handleCancel}>
-              Close
+
+        <div className="flex justify-end gap-3 pt-6 border-t mt-4">
+          <Button variant="ghost" type="button" onClick={handleCancel} disabled={isPending}>
+            <X className="mr-2 h-4 w-4" /> {isViewMode ? "Close" : "Cancel"}
+          </Button>
+          
+          {!isViewMode && (
+            <Button type="submit" disabled={isPending} className="min-w-[140px] bg-slate-900">
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {isEditMode ? "Save Changes" : "Save Category"}
             </Button>
-          ) : (
-            <>
-              <Button variant="outline" type="button" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? "Save Changes" : "Save Category"}
-              </Button>
-            </>
           )}
         </div>
       </form>

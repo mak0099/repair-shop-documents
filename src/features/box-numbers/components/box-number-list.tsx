@@ -6,7 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { ResourceListPage } from "@/components/shared/resource-list-page"
 import { ResourceActions } from "@/components/shared/resource-actions"
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header"
-import { DateCell, ImageCell, StatusCell } from "@/components/shared/data-table-cells"
+import { StatusCell } from "@/components/shared/data-table-cells"
 import {
   useBoxNumbers,
   useDeleteBoxNumber,
@@ -16,13 +16,20 @@ import {
 } from "../box-number.api"
 import { BoxNumber } from "../box-number.schema"
 import { useBoxNumberModal } from "../box-number-modal-context"
-import { BOX_NUMBER_STATUS_OPTIONS } from "../box-number.constants"
+
+/**
+ * Filter Options: Standardizing to 'isActive' pattern.
+ */
+const ACTIVE_STATUS_OPTIONS = [
+  { label: "Active", value: "true" },
+  { label: "Inactive", value: "false" },
+]
 
 const INITIAL_FILTERS = {
   search: "",
   page: 1,
   pageSize: 10,
-  status: "all", // Assuming "all" is a valid filter for status
+  isActive: "all",
 }
 
 export function BoxNumberList() {
@@ -32,6 +39,10 @@ export function BoxNumberList() {
   const bulkStatusUpdateMutation = useUpdateManyBoxNumbers()
   const { openModal } = useBoxNumberModal()
 
+  /**
+   * Column Definitions
+   * No more 'BoxNumberWithId' hacks. Using the base BoxNumber type.
+   */
   const columns: ColumnDef<BoxNumber>[] = useMemo(
     () => [
       {
@@ -39,76 +50,61 @@ export function BoxNumberList() {
         header: ({ column }) => <DataTableColumnHeader column={column} title="Box Name/Number" />,
         cell: ({ row }) => (
           <div
-            className="font-medium cursor-pointer hover:underline"
+            className="font-medium cursor-pointer hover:underline text-primary"
             onClick={() => openModal({ initialData: row.original, isViewMode: true })}
-          >{row.getValue("name")}</div>
+          >
+            {row.getValue("name")}
+          </div>
         ),
       },
       {
         accessorKey: "location",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Location" />,
-        cell: ({ row }) => (
-          <div
-            className="font-medium cursor-pointer hover:underline"
-            onClick={() => openModal({ initialData: row.original, isViewMode: true })}
-          >{row.getValue("location")}</div>
-        ),
       },
       {
-        accessorKey: "createdAt",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
-        cell: ({ row }) => <DateCell date={row.original.createdAt} />,
-      },
-      {
-        accessorKey: "status",
+        accessorKey: "isActive",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-        cell: ({ row }) => (
-          <StatusCell isActive={row.original.status === "ACTIVE"} />
-        ),
+        cell: ({ row }) => <StatusCell isActive={row.original.isActive} />,
       },
       {
         id: "actions",
-        enableSorting: false,
-        enableHiding: false,
         cell: ({ row }) => (
           <ResourceActions
-            resource={row.original}
+            // Here we only cast the specific resource for the actions
+            resource={row.original as BoxNumber & { id: string }}
             resourceName="Box Number"
-            resourceTitle={row.original.name} // Display name in confirmation
-            onView={(boxNumber) => openModal({ initialData: boxNumber, isViewMode: true })}
-            onEdit={(boxNumber) => openModal({ initialData: boxNumber })}
+            resourceTitle={row.original.name}
+            onView={(data) => openModal({ initialData: data, isViewMode: true })}
+            onEdit={(data) => openModal({ initialData: data })}
             deleteMutation={deleteBoxNumberMutation}
-            updateMutation={updateBoxNumberMutation}
+            updateMutation={updateBoxNumberMutation as never}
           />
         ),
       },
-    ], [openModal, deleteBoxNumberMutation, updateBoxNumberMutation]
+    ],
+    [openModal, deleteBoxNumberMutation, updateBoxNumberMutation]
   )
 
-  const filterDefinitions = [
-      {
-        key: "status",
-        title: "Status",
-        options: BOX_NUMBER_STATUS_OPTIONS,
-      },
-    ]
-
   return (
-    <>
-      <ResourceListPage<BoxNumber, unknown>
-        title="Box Numbers"
-        resourceName="box-numbers"
-        description="Manage box number locations for inventory."
-        onAdd={() => openModal()}
-        addLabel="Add Box Number"
-        columns={columns}
-        useResourceQuery={useBoxNumbers}
-        bulkDeleteMutation={bulkDeleteMutation}
-        bulkStatusUpdateMutation={bulkStatusUpdateMutation}
-        initialFilters={INITIAL_FILTERS}
-        searchPlaceholder="Search by name or location..."
-        filterDefinitions={filterDefinitions}
-      />
-    </>
+    <ResourceListPage<BoxNumber, unknown>
+      title="Box Numbers"
+      resourceName="box-numbers"
+      description="Manage and track physical storage boxes."
+      onAdd={() => openModal()}
+      addLabel="Add Box"
+      columns={columns}
+      useResourceQuery={useBoxNumbers}
+      bulkDeleteMutation={bulkDeleteMutation}
+      bulkStatusUpdateMutation={bulkStatusUpdateMutation}
+      initialFilters={INITIAL_FILTERS}
+      searchPlaceholder="Search name or location..."
+      filterDefinitions={[
+        {
+          key: "isActive",
+          title: "Status",
+          options: ACTIVE_STATUS_OPTIONS,
+        },
+      ]}
+    />
   )
 }

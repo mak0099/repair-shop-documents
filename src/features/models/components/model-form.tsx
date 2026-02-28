@@ -1,12 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useForm, FieldErrors } from "react-hook-form"
 import { useQueryClient } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, X } from "lucide-react"
 
 import { TextField } from "@/components/forms/text-field"
 import { CheckboxField } from "@/components/forms/checkbox-field"
@@ -17,11 +16,12 @@ import { BrandComboboxField } from "@/features/brands"
 import { modelSchema, ModelFormValues, Model } from "../model.schema"
 import { useCreateModel, useUpdateModel } from "../model.api"
 
-const MODELS_BASE_HREF = "/dashboard/options/models" // Based on folder structure, might need adjustment
-
 interface ModelFormProps {
   initialData?: Model | null
-  onSuccess?: (data: Model) => void
+  /**
+   * onSuccess is now primary for both success and closing the modal.
+   */
+  onSuccess?: (data?: Model) => void
   isViewMode?: boolean
   brandId?: string
 }
@@ -32,7 +32,6 @@ export function ModelForm({
   isViewMode: initialIsViewMode = false,
   brandId,
 }: ModelFormProps) {
-  const router = useRouter()
   const queryClient = useQueryClient()
   const { mutate: createModel, isPending: isCreating } = useCreateModel()
   const { mutate: updateModel, isPending: isUpdating } = useUpdateModel()
@@ -40,14 +39,18 @@ export function ModelForm({
   const [mode, setMode] = useState<"view" | "edit" | "create">(
     initialIsViewMode ? "view" : initialData ? "edit" : "create"
   )
+  
   const isViewMode = mode === "view"
-
   const isPending = isCreating || isUpdating
   const isEditMode = !!initialData && mode !== "create"
 
   const form = useForm<ModelFormValues>({
     resolver: zodResolver(modelSchema),
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      name: initialData.name,
+      brand_id: initialData.brand_id,
+      isActive: initialData.isActive,
+    } : {
       name: "",
       brand_id: brandId || "",
       isActive: true,
@@ -56,90 +59,102 @@ export function ModelForm({
 
   const onFormError = (errors: FieldErrors<ModelFormValues>) => {
     console.error("Model form validation errors:", errors)
-    toast.error("Please fill all required fields correctly.")
+    toast.error("Please correct the highlighted fields.")
   }
 
-  const handleCancel = () => {
+  const handleClose = () => {
     if (onSuccess) {
-      onSuccess(initialData as Model)
-    } else {
-      router.push(MODELS_BASE_HREF)
+      // Just closing without passing data if cancelled
+      onSuccess(initialData || undefined)
     }
   }
 
   const onSubmit = (data: ModelFormValues) => {
-    const handleSuccess = (model: Model) => {
+    const handleMutationSuccess = (model: Model) => {
       toast.success(`Model ${isEditMode ? "updated" : "created"} successfully`)
       queryClient.invalidateQueries({ queryKey: ["models"] })
-      if (onSuccess) {
-        onSuccess(model)
-      } else {
-        router.push(MODELS_BASE_HREF)
-      }
+      if (onSuccess) onSuccess(model)
     }
 
-    const handleError = (error: Error) => {
-      toast.error(`Failed to ${isEditMode ? "update" : "create"} model: ${error.message}`)
+    const handleMutationError = (error: Error) => {
+      toast.error(`Error: ${error.message}`)
     }
 
     if (isEditMode && initialData) {
       updateModel(
         { id: initialData.id, data },
-        {
-          onSuccess: handleSuccess,
-          onError: handleError,
-        }
+        { onSuccess: handleMutationSuccess, onError: handleMutationError }
       )
     } else {
       createModel(data, {
-        onSuccess: handleSuccess,
-        onError: handleError,
+        onSuccess: handleMutationSuccess,
+        onError: handleMutationError
       })
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="relative p-4 space-y-4">
-        {isViewMode && (
-          <div className="absolute top-4 right-4 z-10">
-            <Button size="sm" type="button" onClick={(e) => { e.preventDefault(); setMode("edit"); }}>
-              Edit
-            </Button>
-          </div>
-        )}
-        <div className={isViewMode ? "pt-10" : ""}>
+      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-5 p-1">
+        <div className="grid grid-cols-1 gap-4">
           <TextField
             control={form.control}
             name="name"
             label="Model Name"
-            placeholder="e.g., iPhone 15 Pro"
+            placeholder="e.g., Galaxy S24 Ultra"
             required
             readOnly={isViewMode}
           />
+
           <BrandComboboxField
             control={form.control}
             name="brand_id"
+            label="Brand"
             required
             readOnly={isViewMode || !!brandId}
           />
-          <CheckboxField
-            control={form.control}
-            name="isActive"
-            label="Is Active?"
-            className="rounded-md border p-3"
-            disabled={isViewMode}
-          />
+
+          <div className="pt-2">
+            <CheckboxField
+              control={form.control}
+              name="isActive"
+              label="Active for Inventory"
+              description="If disabled, this model won't appear in new entries."
+              className="rounded-xl border border-slate-100 p-4 bg-slate-50/50"
+              disabled={isViewMode}
+            />
+          </div>
         </div>
-        <div className="flex justify-end gap-2 pt-4">
+
+        <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
           {isViewMode ? (
-            <Button variant="outline" type="button" onClick={handleCancel}>Close</Button>
+            <Button 
+              variant="outline" 
+              type="button" 
+              onClick={(e) => { e.preventDefault(); setMode("edit"); }}
+              className="px-8 border-slate-200"
+            >
+              Edit Details
+            </Button>
           ) : (
             <>
-              <Button variant="outline" type="button" onClick={handleCancel}>Cancel</Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? "Save Changes" : "Save Model"}
+              <Button 
+                variant="ghost" 
+                type="button" 
+                onClick={handleClose} 
+                className="text-slate-500 hover:bg-slate-50"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isPending} 
+                className="min-w-[140px] bg-slate-900 hover:bg-slate-800 shadow-lg shadow-slate-200"
+              >
+                {isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {isEditMode ? "Save Changes" : "Create Model"}
               </Button>
             </>
           )}

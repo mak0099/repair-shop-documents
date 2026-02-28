@@ -1,17 +1,18 @@
 import { z } from "zod";
+import { BaseEntity } from "@/types/common";
 
+/**
+ * Validates stock adjustment entries.
+ * Note: We don't include 'id' here because BaseEntity handles it.
+ */
 export const stockAdjustmentSchema = z.object({
-  id: z.string().optional(),
-  
-  // Mobile specific linkage
   stockId: z.string().min(1, "Please select a specific stock item"),
-  itemName: z.string().optional(), // For UI convenience
-  imei: z.string().optional(),     // For UI convenience
+  itemName: z.string().optional(), 
+  imei: z.string().optional(),     
 
   type: z.enum(["IN", "OUT"]), 
   quantity: z.number().positive("Quantity must be greater than 0"),
   
-  // These values MUST match the 'value' field in your constants
   reason: z.enum([
     "Inventory Audit", 
     "Damage", 
@@ -25,7 +26,16 @@ export const stockAdjustmentSchema = z.object({
   
   note: z.string().optional(),
   adjustedBy: z.string().optional(),
-  date: z.string().default(() => new Date().toISOString()),
+  date: z.string().min(1, "Date is required"),
 });
 
-export type StockAdjustment = z.infer<typeof stockAdjustmentSchema>;
+/**
+ * This is used for form validation
+ */
+export type StockAdjustmentFormValues = z.infer<typeof stockAdjustmentSchema>;
+
+/**
+ * This is the full entity type used in lists and APIs.
+ * It combines BaseEntity (id, createdAt, updatedAt) with form values.
+ */
+export interface StockAdjustment extends BaseEntity, StockAdjustmentFormValues {}

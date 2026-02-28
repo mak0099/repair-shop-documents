@@ -1,3 +1,5 @@
+"use client"
+
 import { createApiHooksFor } from "@/lib/api-factory";
 import { createBulkDeleteHook, createBulkUpdateHook } from "@/lib/api-bulk-hooks";
 import type { Attribute } from "./attribute.schema";

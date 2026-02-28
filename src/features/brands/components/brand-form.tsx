@@ -2,11 +2,11 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useForm, FieldErrors } from "react-hook-form"
+import { useForm, FieldErrors, Resolver } from "react-hook-form" // Added Resolver import
 import { useQueryClient } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, Save, X, Edit3, Trash2 } from "lucide-react"
 
 import { TextField } from "@/components/forms/text-field"
 import { CheckboxField } from "@/components/forms/checkbox-field"
@@ -14,8 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
 import { ImageUploadField } from "@/components/forms/image-upload-field"
 
-import { brandSchema, BrandFormValues } from "../brand.schema"
-import { Brand } from "../brand.schema"
+import { brandSchema, type BrandFormValues, type Brand } from "../brand.schema"
 import { useCreateBrand, useUpdateBrand } from "../brand.api"
 import { BRANDS_BASE_HREF } from "@/config/paths"
 
@@ -35,20 +34,29 @@ export function BrandForm({ initialData, onSuccess, isViewMode: initialIsViewMod
     initialIsViewMode ? "view" : initialData ? "edit" : "create"
   )
   const isViewMode = mode === "view"
-
   const isPending = isCreating || isUpdating
   const isEditMode = !!initialData && mode !== "create"
 
+  /**
+   * FIX: Applied the "Circuit Breaker" to break the inference loop.
+   * This resolves the 'boolean | undefined' mismatch.
+   */
   const form = useForm<BrandFormValues>({
-    resolver: zodResolver(brandSchema),
+    resolver: zodResolver(brandSchema) as unknown as Resolver<BrandFormValues>,
     defaultValues: initialData
-      ? { ...initialData, logo: undefined } // Set logo to undefined to avoid validation issues with URL string
+      ? { 
+          ...initialData, 
+          logo: undefined,
+          isActive: initialData.isActive ?? true // Ensuring it's never undefined
+        } 
       : {
           name: "",
           logo: undefined,
-          isActive: true,
+          isActive: true, // Boolean Consistency
         },
   })
+
+  const { handleSubmit, control, reset } = form
 
   const onFormError = (errors: FieldErrors<BrandFormValues>) => {
     console.error("Brand form validation errors:", errors)
@@ -56,30 +64,24 @@ export function BrandForm({ initialData, onSuccess, isViewMode: initialIsViewMod
   }
 
   const handleCancel = () => {
-    if (onSuccess) {
-      onSuccess(initialData as Brand)
+    if (onSuccess && initialData) {
+      onSuccess(initialData)
     } else {
       router.push(BRANDS_BASE_HREF)
     }
   }
 
   function onSubmit(data: BrandFormValues) {
-    if (isEditMode && initialData) {
+    if (isEditMode && initialData?.id) {
       updateBrand(
         { id: initialData.id, data },
         {
           onSuccess: (updatedBrand: Brand) => {
             toast.success("Brand updated successfully")
             queryClient.invalidateQueries({ queryKey: ["brands"] })
-            if (onSuccess) {
-              onSuccess(updatedBrand)
-            } else {
-              router.push(BRANDS_BASE_HREF)
-            }
+            onSuccess ? onSuccess(updatedBrand) : router.push(BRANDS_BASE_HREF)
           },
-          onError: (error) => {
-            toast.error("Failed to update brand: " + error.message)
-          },
+          onError: (error) => toast.error("Update failed: " + error.message),
         }
       )
     } else {
@@ -87,67 +89,74 @@ export function BrandForm({ initialData, onSuccess, isViewMode: initialIsViewMod
         onSuccess: (newBrand) => {
           toast.success("Brand created successfully")
           queryClient.invalidateQueries({ queryKey: ["brands"] })
-          if (onSuccess) {
-            onSuccess(newBrand)
-          } else {
-            router.push(BRANDS_BASE_HREF)
-          }
+          onSuccess ? onSuccess(newBrand) : router.push(BRANDS_BASE_HREF)
         },
-        onError: (error) => {
-          toast.error("Failed to create brand: " + error.message)
-        },
+        onError: (error) => toast.error("Creation failed: " + error.message),
       })
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="relative p-4 space-y-4">
+      <form onSubmit={handleSubmit(onSubmit, onFormError)} className="space-y-6 p-1">
+        
+        {/* View Mode Header */}
         {isViewMode && (
-          <div className="absolute top-4 right-4 z-10">
-            <Button size="sm" type="button" onClick={(e) => {
-              e.preventDefault()
-              setMode("edit")
-            }}>
-              Edit
+          <div className="flex justify-end mb-4">
+            <Button size="sm" variant="outline" type="button" onClick={() => setMode("edit")}>
+              <Edit3 className="mr-2 h-4 w-4" /> Edit Brand
             </Button>
           </div>
         )}
-        <div className={isViewMode ? "pt-10" : ""}>
-          <TextField
-            control={form.control}
-            name="name"
-            label="Brand Name"
-            placeholder="e.g., Apple"
-            required
-            readOnly={isViewMode}
-          />
-          <ImageUploadField
-            control={form.control}
-            name="logo"
-            label="Logo"
-            initialImage={initialData?.logo}
-            isViewMode={isViewMode}
-          />
-          <CheckboxField
-            control={form.control}
-            name="isActive"
-            label="Is Active?"
-            className="rounded-md border p-3"
-            disabled={isViewMode}
-          />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <TextField
+              control={control}
+              name="name"
+              label="Brand Name"
+              placeholder="e.g., Apple, Samsung"
+              required
+              readOnly={isViewMode}
+            />
+            
+            <div className="pt-2">
+              <CheckboxField
+                control={control}
+                name="isActive"
+                label="Mark as Active"
+                description="Inactive brands won't show in product selection."
+                disabled={isViewMode}
+                className="border rounded-lg p-4 bg-slate-50/50"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <ImageUploadField
+              control={control}
+              name="logo"
+              label="Brand Logo"
+              initialImage={initialData?.logo}
+              isViewMode={isViewMode}
+            />
+          </div>
         </div>
-        <div className="flex justify-end gap-2 pt-4">
-          {isViewMode ? (
-            <Button variant="outline" type="button" onClick={handleCancel}>Close</Button>
-          ) : (
-            <>
-              <Button variant="outline" type="button" onClick={handleCancel}>Cancel</Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? "Save Changes" : "Save Brand"}
-              </Button>
-            </>
+
+        <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+          <Button variant="ghost" type="button" onClick={handleCancel} disabled={isPending}>
+            <X className="mr-2 h-4 w-4" /> {isViewMode ? "Close" : "Cancel"}
+          </Button>
+          
+          {!isViewMode && (
+            <Button type="submit" disabled={isPending} className="min-w-[140px] bg-slate-900">
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {isEditMode ? "Update Brand" : "Create Brand"}
+            </Button>
           )}
         </div>
       </form>

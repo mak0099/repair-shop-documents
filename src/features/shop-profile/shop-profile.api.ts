@@ -1,3 +1,5 @@
+"use client"
+
 import { createApiHooksFor } from "@/lib/api-factory";
 import { ShopProfile } from "./shop-profile.schema";
 

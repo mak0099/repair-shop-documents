@@ -3,7 +3,7 @@ import { applySort } from "@/mocks/mock-utils";
 import { StockAdjustment } from "../stock-adjustment.schema";
 import { stockAdjustmentsMock } from "./stock-adjustment.mock";
 
-let stockAdjustments = [...stockAdjustmentsMock];
+const stockAdjustments = [...stockAdjustmentsMock];
 
 export const stockAdjustmentHandlers = [
   // GET all adjustments with advanced filtering

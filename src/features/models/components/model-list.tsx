@@ -8,6 +8,10 @@ import { ResourceActions } from "@/components/shared/resource-actions"
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header"
 import { DateCell, StatusCell } from "@/components/shared/data-table-cells"
 
+/**
+ * FIX 1: Import the Brand type from its schema.
+ */
+import { Brand } from "@/features/brands/brand.schema"
 import {
   useModels,
   useDeleteModel,
@@ -19,8 +23,6 @@ import { Model } from "../model.schema"
 import { useModelModal } from "../model-modal-context"
 import { STATUS_OPTIONS } from "../model.constants"
 
-const MODELS_BASE_HREF = "/dashboard/options/models"
-
 const INITIAL_FILTERS = {
   search: "",
   page: 1,
@@ -28,8 +30,11 @@ const INITIAL_FILTERS = {
   status: "active",
 }
 
+/**
+ * Extended type for the list to include the joined 'brand' object.
+ */
 interface ModelInList extends Model {
-  brand?: Pick<Brand, "id" | "name">
+  brand?: Pick<Brand, 'id' | 'name'>;
 }
 
 export function ModelList() {
@@ -39,13 +44,16 @@ export function ModelList() {
   const bulkStatusUpdateMutation = useUpdateManyModels()
   const { openModal } = useModelModal()
 
-  const columns: ColumnDef<Model>[] = useMemo(
+  const columns: ColumnDef<ModelInList>[] = useMemo(
     () => [
       {
         accessorKey: "name",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
-          <div className="font-medium cursor-pointer hover:underline" onClick={() => openModal({ initialData: row.original, isViewMode: true })}>
+          <div 
+            className="font-medium cursor-pointer hover:underline text-slate-900" 
+            onClick={() => openModal({ initialData: row.original as unknown as Model, isViewMode: true })}
+          >
             {row.getValue("name")}
           </div>
         ),
@@ -54,8 +62,7 @@ export function ModelList() {
         id: "brand",
         header: "Brand",
         cell: ({ row }) => {
-          const model = row.original as ModelInList
-          return model.brand?.name ?? "N/A"
+          return row.original.brand?.name ?? <span className="text-slate-400 italic">N/A</span>
         },
       },
       {
@@ -77,10 +84,10 @@ export function ModelList() {
             resource={row.original}
             resourceName="Model"
             resourceTitle={row.original.name}
-            onView={(model) => openModal({ initialData: model, isViewMode: true })}
-            onEdit={(model) => openModal({ initialData: model })}
+            onView={(model) => openModal({ initialData: model as Model, isViewMode: true })}
+            onEdit={(model) => openModal({ initialData: model as Model })}
             deleteMutation={deleteModelMutation}
-            updateMutation={updateModelMutation}
+            updateMutation={updateModelMutation} 
           />
         ),
       },
@@ -97,21 +104,19 @@ export function ModelList() {
   ]
 
   return (
-    <>
-      <ResourceListPage<Model, unknown>
-        title="Models"
-        resourceName="models"
-        description="Manage device models"
-        onAdd={() => openModal()}
-        addLabel="Add Model"
-        columns={columns}
-        useResourceQuery={useModels}
-        bulkDeleteMutation={bulkDeleteMutation}
-        bulkStatusUpdateMutation={bulkStatusUpdateMutation}
-        initialFilters={INITIAL_FILTERS}
-        searchPlaceholder="Search by name..."
-        filterDefinitions={filterDefinitions}
-      />
-    </>
+    <ResourceListPage<ModelInList, unknown>
+      title="Models"
+      resourceName="models"
+      description="Manage device models and versions"
+      onAdd={() => openModal()}
+      addLabel="Add Model"
+      columns={columns}
+      useResourceQuery={useModels}
+      bulkDeleteMutation={bulkDeleteMutation}
+      bulkStatusUpdateMutation={bulkStatusUpdateMutation}
+      initialFilters={INITIAL_FILTERS}
+      searchPlaceholder="Search by model name..."
+      filterDefinitions={filterDefinitions}
+    />
   )
 }

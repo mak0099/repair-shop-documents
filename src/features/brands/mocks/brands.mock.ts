@@ -18,17 +18,26 @@ const brandData = [
   { name: "Lenovo", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Lenovo_Global_Corporate_Logo.svg/200px-Lenovo_Global_Corporate_Logo.svg.png" },
 ];
 
+/**
+ * Generates mock brands ensuring schema compliance.
+ * FIX: Added 'updatedAt' to satisfy the Brand type requirements.
+ */
 const generateBrands = (count: number): Brand[] => {
   const brands: Brand[] = [];
   for (let i = 0; i < count; i++) {
     const brandInfo = brandData[i % brandData.length];
     const isDuplicate = i >= brandData.length;
+    const date = new Date(Date.now() - (count - i) * 24 * 60 * 60 * 1000).toISOString();
+
     brands.push({
       id: `brand-${String(100 + i).padStart(3, '0')}`,
       name: isDuplicate ? `${brandInfo.name} ${Math.floor(i / brandData.length) + 1}` : brandInfo.name,
       logo: brandInfo.logo,
-      isActive: i % 7 !== 0, // Make some inactive for variety
-      createdAt: new Date(Date.now() - (count - i) * 24 * 60 * 60 * 1000).toISOString(),
+      // Consistency: Strictly using isActive boolean
+      isActive: i % 7 !== 0, 
+      createdAt: date,
+      // FIX: Added missing updatedAt property
+      updatedAt: date, 
     });
   }
   return brands;

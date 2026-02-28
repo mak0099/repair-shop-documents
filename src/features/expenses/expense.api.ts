@@ -1,9 +1,10 @@
-import { createApiHooksFor } from "@/lib/api-factory"
-import { createBulkDeleteHook, createBulkUpdateHook } from "@/lib/api-bulk-hooks"
-import type { Expense } from "./expense.schema"
-import type { ExpenseFormValues } from "./expense.schema"
+"use client"
 
-const expenseApiHooks = createApiHooksFor<Expense, ExpenseFormValues>("expenses")
+import { createApiHooksFor } from "@/lib/api-factory"
+import { createBulkDeleteHook } from "@/lib/api-bulk-hooks"
+import type { Expense } from "./expense.schema"
+
+const expenseApiHooks = createApiHooksFor<Expense, Partial<Expense>>("expenses")
 
 export interface ExpenseOption {
   id: string
@@ -17,5 +18,5 @@ export const useUpdateExpense = expenseApiHooks.useUpdateWithFormData
 export const usePartialUpdateExpense = expenseApiHooks.useUpdate
 export const useDeleteExpense = expenseApiHooks.useDelete
 
-export const useDeleteManyExpenses = createBulkDeleteHook<Expense>("expenses")
+export const useDeleteManyExpenses = createBulkDeleteHook("expenses")
 export const useExpense = expenseApiHooks.useGetOne

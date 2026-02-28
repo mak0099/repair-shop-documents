@@ -30,6 +30,10 @@ export function ShopProfileForm({ initialData, onCancel, onSuccess }: ShopProfil
 
   const form = useForm<ShopProfile>({
     resolver: zodResolver(shopProfileSchema),
+    /**
+     * FIX: Ensuring currency is never undefined in defaultValues.
+     * This aligns with the strict string requirement in the schema.
+     */
     defaultValues: initialData || {
       name: "",
       ownerName: "",
@@ -37,7 +41,7 @@ export function ShopProfileForm({ initialData, onCancel, onSuccess }: ShopProfil
       email: "",
       address: "",
       binNumber: "",
-      currency: "BDT",
+      currency: "BDT", 
       invoiceFooterMessage: "",
       logoUrl: "",
       website: "",
@@ -45,16 +49,15 @@ export function ShopProfileForm({ initialData, onCancel, onSuccess }: ShopProfil
   });
 
   function onSubmit(data: ShopProfile) {
-    const mutation = isEditMode ? updateProfile : createProfile;
     const mutationOptions = {
       onSuccess: () => {
         toast.success(`Shop profile ${isEditMode ? 'updated' : 'created'} successfully`);
         onSuccess();
       },
-      onError: (err: any) => toast.error(err.message),
+      onError: (err: Error) => toast.error(err.message),
     };
 
-    if (isEditMode && initialData) {
+    if (isEditMode && initialData?.id) {
       updateProfile({ id: initialData.id, data }, mutationOptions);
     } else {
       createProfile(data, mutationOptions);
@@ -64,11 +67,11 @@ export function ShopProfileForm({ initialData, onCancel, onSuccess }: ShopProfil
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Business Information</CardTitle>
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b bg-slate-50/50">
+            <CardTitle className="text-lg font-semibold text-slate-800">Business Information</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-6">
             <TextField control={form.control} name="name" label="Shop Name" required />
             <TextField control={form.control} name="ownerName" label="Owner Name" required />
             <TextField control={form.control} name="phone" label="Phone Number" required />
@@ -81,18 +84,18 @@ export function ShopProfileForm({ initialData, onCancel, onSuccess }: ShopProfil
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Financial & Invoice Settings</CardTitle>
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b bg-slate-50/50">
+            <CardTitle className="text-lg font-semibold text-slate-800">Financial & Invoice Settings</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-6">
             <ComboboxWithAdd
               control={form.control}
               name="currency"
-              label="Currency"
+              label="Primary Currency"
               options={CURRENCY_OPTIONS}
               required
-              placeholder="Select a currency"
+              placeholder="Select currency"
               searchPlaceholder="Search currency..."
               noResultsMessage="No currency found."
             />
@@ -101,17 +104,19 @@ export function ShopProfileForm({ initialData, onCancel, onSuccess }: ShopProfil
                 control={form.control}
                 name="invoiceFooterMessage"
                 label="Invoice Footer Message"
-                placeholder="Ex: No return without invoice."
+                placeholder="Ex: Goods once sold are not returnable."
               />
             </div>
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
-          <Button type="submit" disabled={isPending}>
+        <div className="flex justify-end gap-3 border-t pt-6">
+          <Button variant="ghost" type="button" onClick={onCancel} className="text-slate-500">
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending} className="min-w-[140px] bg-slate-900 hover:bg-slate-800">
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditMode ? "Save Changes" : "Save Profile"}
+            {isEditMode ? "Save Changes" : "Create Profile"}
           </Button>
         </div>
       </form>

@@ -1,18 +1,19 @@
 import { z } from "zod";
+import { BaseEntity } from "@/types/common";
 
 export const masterSettingValueSchema = z.object({
   id: z.string().optional(),
   value: z.string().min(1, "Value is required"),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 export const masterSettingSchema = z.object({
-  id: z.string(),
-  name: z.string(), 
-  key: z.string(), // example: "PAYMENT_METHODS", "DEVICE_TYPES"
+  name: z.string().min(1, "Name is required"),
+  key: z.string().min(1, "Key is required"),
+  description: z.string().optional().nullable(),
   values: z.array(masterSettingValueSchema),
-  description: z.string().optional(),
 });
 
-export type MasterSetting = z.infer<typeof masterSettingSchema>;
-export type MasterSettingValue = z.infer<typeof masterSettingValueSchema>;
+export type MasterSettingFormValues = z.infer<typeof masterSettingSchema>;
+
+export interface MasterSetting extends BaseEntity, MasterSettingFormValues {}

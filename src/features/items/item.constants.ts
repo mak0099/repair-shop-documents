@@ -10,3 +10,8 @@ export const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
 ]
+
+export const CONDITION_OPTIONS = [
+  { value: "New", label: "New" },
+  { value: "Used", label: "Used" },
+]

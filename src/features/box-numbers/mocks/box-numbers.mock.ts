@@ -18,18 +18,24 @@ const boxNumberData = [
   { name: "Shelf-F", location: "Main Store Floor", description: "Keyboards" },
 ];
 
+/**
+ * Generates mock box number data for testing and development.
+ * Standardized to use 'isActive' boolean logic for consistency.
+ */
 const generateBoxNumbers = (count: number): BoxNumber[] => {
   const boxNumbers: BoxNumber[] = [];
   for (let i = 0; i < count; i++) {
     const boxInfo = boxNumberData[i % boxNumberData.length];
     const isDuplicate = i >= boxNumberData.length;
+    
     boxNumbers.push({
       id: `box-${String(100 + i).padStart(3, '0')}`,
       name: isDuplicate ? `${boxInfo.name} ${Math.floor(i / boxNumberData.length) + 1}` : boxInfo.name,
       location: boxInfo.location,
       description: boxInfo.description,
-      status: i % 3 === 0 ? "INACTIVE" : "ACTIVE", // Make some inactive for variety
-      createdAt: new Date(Date.now() - (count - i) * 24 * 60 * 60 * 1000).toISOString(),
+      // FIX: Changed 'status' to 'isActive' boolean. 
+      // i % 4 === 0 makes every 4th item inactive for testing purposes.
+      isActive: i % 4 !== 0, 
     });
   }
   return boxNumbers;

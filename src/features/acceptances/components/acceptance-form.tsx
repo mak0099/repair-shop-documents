@@ -119,7 +119,7 @@ export function AcceptanceForm({
         queryClient.invalidateQueries({ queryKey: ["acceptances"] })
         onSuccess?.(res)
       },
-      onError: (error: any) => toast.error(error.message),
+      onError: (error: Error) => toast.error(error.message),
     }
 
     if (isEditMode && initialData) {
@@ -171,7 +171,7 @@ export function AcceptanceForm({
                     name="acceptance_date"
                     label="Created Date"
                     required
-                    disabled={(date) => isViewMode || date > new Date()}
+                    readOnly={isViewMode}
                   />
                   <TextField control={control} name="imei" label="IMEI/Serial" required readOnly={isViewMode} />
                   <TextField control={control} name="secondary_imei" label="Secondary IMEI" readOnly={isViewMode} />

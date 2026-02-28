@@ -12,9 +12,11 @@ import { apiClient } from "./api-client"
 
 /**
  * Basic structure for any resource in the system.
+ * FIX: Changed 'id' to optional (id?) to allow resources like 'Attribute' 
+ * where the ID might be undefined during initial creation stages.
  */
 interface Resource {
-  id: string
+  id?: string
 }
 
 /**
@@ -118,7 +120,6 @@ export function createApiHooksFor<
 
   /**
    * Hook for creating a new resource using multipart/form-data.
-   * Useful for file uploads.
    */
   const useCreateWithFormData = (): UseMutationResult<TResource, Error, TCreateParams> => {
     const queryClient = useQueryClient()
@@ -155,7 +156,6 @@ export function createApiHooksFor<
 
   /**
    * Hook for updating an existing resource using FormData.
-   * Uses POST with _method spoofing for wider backend compatibility.
    */
   const useUpdateWithFormData = (): UseMutationResult<
     TResource,

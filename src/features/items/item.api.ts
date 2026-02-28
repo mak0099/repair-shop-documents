@@ -1,9 +1,13 @@
+"use client"
+
 import { createApiHooksFor } from "@/lib/api-factory"
 import { createBulkDeleteHook, createBulkUpdateHook } from "@/lib/api-bulk-hooks"
-import type { Item } from "./item.schema"
-import type { ItemFormValues } from "./item.schema"
+import type { Item, ItemFormValues } from "./item.schema"
 
-const itemApiHooks = createApiHooksFor<Item, ItemFormValues>("items")
+/**
+ * Item API Hooks with Partial update support for isActive toggles.
+ */
+const itemApiHooks = createApiHooksFor<Item, ItemFormValues, Partial<ItemFormValues>>("items")
 
 export interface ItemOption {
   id: string
@@ -17,6 +21,6 @@ export const useUpdateItem = itemApiHooks.useUpdate
 export const usePartialUpdateItem = itemApiHooks.useUpdate
 export const useDeleteItem = itemApiHooks.useDelete
 
-export const useDeleteManyItems = createBulkDeleteHook<Item>("items")
+export const useDeleteManyItems = createBulkDeleteHook("items")
 export const useUpdateManyItems = createBulkUpdateHook<Item>("items")
 export const useItem = itemApiHooks.useGetOne

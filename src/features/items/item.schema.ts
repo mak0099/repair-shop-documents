@@ -1,18 +1,16 @@
 import { z } from "zod";
 
-/**
- * Standardized Schema for Unified Item Management
- */
 export const itemSchema = z.object({
   id: z.string().optional(),
+  sku: z.string().optional(),
   name: z.string().min(1, "Product name is required"),
   
-  // Relational IDs (Standardized naming)
+  // Relational IDs
   categoryId: z.string().min(1, "Category is required"),
   brandId: z.string().min(1, "Brand is required"),
-  modelId: z.string().optional(),
-  supplierId: z.string().optional(),
-  boxNumberId: z.string().optional(), // Linked to Storage Box master
+  modelId: z.string().optional().nullable(),
+  supplierId: z.string().optional().nullable(),
+  boxNumberId: z.string().optional().nullable(),
   
   // Technical Specifications
   deviceType: z.string().optional(),
@@ -31,19 +29,22 @@ export const itemSchema = z.object({
   salePrice: z.coerce.number().min(0).default(0),
   initialStock: z.coerce.number().default(0),
   storageNote: z.string().optional(),
-  sku: z.string().optional(),
-
-  // Logistics & Status Flags
+  
+  // Flags
   condition: z.enum(["Used", "New"]).default("Used"),
-  isBoxIncluded: z.enum(["Yes", "No"]).default("No"),
-  isChargerIncluded: z.enum(["Yes", "No"]).default("No"),
-  addToKhata: z.enum(["Yes", "No"]).default("No"),
+  isBoxIncluded: z.boolean().default(false),
+  isChargerIncluded: z.boolean().default(false),
+  addToKhata: z.boolean().default(false),
   isTouchScreen: z.boolean().default(false),
   isSolidDevice: z.boolean().default(false),
-  
+  isActive: z.boolean().default(true),
+
   note: z.string().optional(),
   description: z.string().optional(),
-  isActive: z.boolean().default(true),
+
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
-export type ItemFormData = z.infer<typeof itemSchema>;
+export type Item = z.infer<typeof itemSchema>;
+export type ItemFormValues = Item;

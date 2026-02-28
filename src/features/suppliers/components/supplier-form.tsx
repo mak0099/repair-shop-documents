@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useForm, FieldErrors } from "react-hook-form"
 import { useQueryClient } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -13,21 +12,22 @@ import { TextareaField } from "@/components/forms/textarea-field"
 import { CheckboxField } from "@/components/forms/checkbox-field"
 import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 
 import { supplierSchema, SupplierFormValues, Supplier } from "../supplier.schema"
 import { useCreateSupplier, useUpdateSupplier } from "../supplier.api"
 
-const SUPPLIERS_BASE_HREF = "/dashboard/inventory/suppliers"
-
 interface SupplierFormProps {
   initialData?: Supplier | null
-  onSuccess?: (data: Supplier) => void
+  /**
+   * onSuccess logic handles both successful submission 
+   * and modal closing for 'Cancel/Close' buttons.
+   */
+  onSuccess?: (data?: Supplier) => void
   isViewMode?: boolean
 }
 
 export function SupplierForm({ initialData, onSuccess, isViewMode: initialIsViewMode = false }: SupplierFormProps) {
-  const router = useRouter()
   const queryClient = useQueryClient()
   const { mutate: createSupplier, isPending: isCreating } = useCreateSupplier()
   const { mutate: updateSupplier, isPending: isUpdating } = useUpdateSupplier()
@@ -36,13 +36,21 @@ export function SupplierForm({ initialData, onSuccess, isViewMode: initialIsView
     initialIsViewMode ? "view" : initialData ? "edit" : "create"
   )
   const isViewMode = mode === "view"
-
   const isPending = isCreating || isUpdating
   const isEditMode = !!initialData && mode !== "create"
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
-    defaultValues: initialData || {
+    defaultValues: initialData ? {
+      company_name: initialData.company_name,
+      contact_person: initialData.contact_person || "",
+      email: initialData.email || "",
+      phone: initialData.phone,
+      vat_number: initialData.vat_number || "",
+      address: initialData.address || "",
+      city: initialData.city || "",
+      isActive: initialData.isActive,
+    } : {
       company_name: "",
       contact_person: "",
       email: "",
@@ -59,57 +67,40 @@ export function SupplierForm({ initialData, onSuccess, isViewMode: initialIsView
     toast.error("Please fill all required fields correctly.")
   }
 
-  const handleCancel = () => {
+  /**
+   * Simple close handler for modal-based forms.
+   */
+  const handleClose = () => {
     if (onSuccess) {
-      onSuccess(initialData as Supplier)
-    } else {
-      router.push(SUPPLIERS_BASE_HREF)
+      onSuccess(initialData || undefined)
     }
   }
 
   function onSubmit(data: SupplierFormValues) {
+    const mutationCallbacks = {
+      onSuccess: (res: Supplier) => {
+        toast.success(`Supplier ${isEditMode ? "updated" : "created"} successfully`)
+        queryClient.invalidateQueries({ queryKey: ["suppliers"] })
+        if (onSuccess) onSuccess(res)
+      },
+      onError: (error: Error) => {
+        toast.error(`Error: ${error.message}`)
+      },
+    }
+
     if (isEditMode && initialData) {
-      updateSupplier(
-        { id: initialData.id, data },
-        {
-          onSuccess: (updatedSupplier: Supplier) => {
-            toast.success("Supplier updated successfully")
-            queryClient.invalidateQueries({ queryKey: ["suppliers"] })
-            if (onSuccess) {
-              onSuccess(updatedSupplier)
-            } else {
-              router.push(SUPPLIERS_BASE_HREF)
-            }
-          },
-          onError: (error) => {
-            toast.error("Failed to update supplier: " + error.message)
-          },
-        }
-      )
+      updateSupplier({ id: initialData.id, data }, mutationCallbacks)
     } else {
-      createSupplier(data, {
-        onSuccess: (newSupplier) => {
-          toast.success("Supplier created successfully")
-          queryClient.invalidateQueries({ queryKey: ["suppliers"] })
-          if (onSuccess) {
-            onSuccess(newSupplier)
-          } else {
-            router.push(SUPPLIERS_BASE_HREF)
-          }
-        },
-        onError: (error) => {
-          toast.error("Failed to create supplier: " + error.message)
-        },
-      })
+      createSupplier(data, mutationCallbacks)
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-4">
-        <Card>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-4 p-1">
+        <Card className="border-slate-200 shadow-sm overflow-hidden">
+          <CardContent className="space-y-4 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <TextField
                 control={form.control}
                 name="company_name"
@@ -128,32 +119,83 @@ export function SupplierForm({ initialData, onSuccess, isViewMode: initialIsView
               <TextField
                 control={form.control}
                 name="vat_number"
-                label="VAT Number"
+                label="VAT / Trade License"
                 readOnly={isViewMode}
-                placeholder="e.g., IT12345678901"
+                placeholder="Business ID"
               />
-              <TextField control={form.control} name="email" label="Email" type="email" readOnly={isViewMode} placeholder="e.g., supplier@apple.com" />
-              <TextField control={form.control} name="phone" label="Phone" required readOnly={isViewMode} placeholder="e.g., +1234567890" />
-              <TextField control={form.control} name="city" label="City" readOnly={isViewMode} placeholder="e.g., Cupertino" />
-              <CheckboxField control={form.control} name="isActive" label="Is Active?" disabled={isViewMode} className="rounded-md border p-3" />
+              <TextField 
+                control={form.control} 
+                name="email" 
+                label="Email" 
+                type="email" 
+                readOnly={isViewMode} 
+                placeholder="supplier@example.com" 
+              />
+              <TextField 
+                control={form.control} 
+                name="phone" 
+                label="Phone" 
+                required 
+                readOnly={isViewMode} 
+                placeholder="+880..." 
+              />
+              <TextField 
+                control={form.control} 
+                name="city" 
+                label="City" 
+                readOnly={isViewMode} 
+                placeholder="Dhaka" 
+              />
+              <div className="pt-2">
+                <CheckboxField 
+                  control={form.control} 
+                  name="isActive" 
+                  label="Active Supplier" 
+                  description="Visible in purchasing modules if active"
+                  disabled={isViewMode} 
+                  className="rounded-xl border border-slate-100 p-4 bg-slate-50/50" 
+                />
+              </div>
             </div>
-            <TextareaField control={form.control} name="address" label="Address" readOnly={isViewMode} placeholder="e.g., 1 Apple Park Way" />
+            <TextareaField 
+              control={form.control} 
+              name="address" 
+              label="Full Office/Warehouse Address" 
+              readOnly={isViewMode} 
+              placeholder="Enter full address..." 
+            />
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
           {isViewMode ? (
-            <Button variant="outline" type="button" onClick={handleCancel}>
-              Close
+            <Button 
+              variant="outline" 
+              type="button" 
+              onClick={(e) => { e.preventDefault(); setMode("edit"); }}
+              className="px-8 border-slate-200"
+            >
+              Edit Details
             </Button>
           ) : (
             <>
-              <Button variant="outline" type="button" onClick={handleCancel}>
+              <Button 
+                variant="ghost" 
+                type="button" 
+                onClick={handleClose} 
+                className="text-slate-500 hover:bg-slate-50"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditMode ? "Save Changes" : "Save Supplier"}
+              <Button 
+                type="submit" 
+                disabled={isPending} 
+                className="min-w-[140px] bg-slate-900 hover:bg-slate-800"
+              >
+                {isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {isEditMode ? "Save Changes" : "Create Supplier"}
               </Button>
             </>
           )}

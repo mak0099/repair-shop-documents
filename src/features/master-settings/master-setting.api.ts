@@ -1,14 +1,15 @@
+"use client"
+
 import { createApiHooksFor } from "@/lib/api-factory";
 import { createBulkDeleteHook, createBulkUpdateHook } from "@/lib/api-bulk-hooks";
 import type { MasterSetting } from "./master-setting.schema";
 
 /**
- * Form values for Master Settings.
- * Used for updating configurations like Device Types, Payment Methods, etc.
+ * Standardized API configuration for Master Settings.
+ * Using Partial<MasterSetting> for the update type ensures that we can 
+ * update specific fields (like just 'values' or 'isActive') without errors.
  */
-type MasterSettingFormValues = Partial<MasterSetting>;
-
-const masterSettingApiHooks = createApiHooksFor<MasterSetting, MasterSettingFormValues>("master-settings");
+const masterSettingApiHooks = createApiHooksFor<MasterSetting, Partial<MasterSetting>>("master-settings");
 
 export interface MasterSettingOption {
   id: string;
@@ -16,33 +17,34 @@ export interface MasterSettingOption {
 }
 
 /**
- * Hook to fetch the list of all Master Settings (e.g., all 7 cards).
+ * Hook to fetch the list of all Master Settings category cards.
  */
 export const useMasterSettings = masterSettingApiHooks.useGetList;
 
 /**
- * Hook to fetch a specific Master Setting by ID.
+ * Hook to fetch a specific Master Setting category (e.g., "Colors") by ID.
  */
 export const useMasterSetting = masterSettingApiHooks.useGetOne;
 
 /**
- * Hook to update values within a Master Setting category.
- * Essential for adding or removing options from a specific configuration.
+ * Hook to update settings within a category. 
+ * This is used by the MasterSettingForm to save new entries.
  */
 export const useUpdateMasterSetting = masterSettingApiHooks.useUpdate;
 
 /**
- * Hook to delete a Master Setting category if needed.
+ * Hook to delete an entire Master Setting category.
  */
 export const useDeleteMasterSetting = masterSettingApiHooks.useDelete;
 
 /**
- * Bulk operation hooks for management.
+ * Bulk operation hooks.
+ * Standardized to match the pattern used in Brand, Category, and Item features.
  */
-export const useDeleteManyMasterSettings = createBulkDeleteHook<MasterSetting>("master-settings");
+export const useDeleteManyMasterSettings = createBulkDeleteHook("master-settings");
 export const useUpdateManyMasterSettings = createBulkUpdateHook<MasterSetting>("master-settings");
 
 /**
- * Hook to get options for dropdowns if needed in other parts of the system.
+ * Helper hook to get dropdown options (e.g., if you need a list of categories elsewhere).
  */
 export const useMasterSettingOptions = masterSettingApiHooks.useGetOptions<MasterSettingOption>;

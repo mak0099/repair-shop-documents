@@ -13,8 +13,7 @@ function capitalize(str: string) {
 
 /**
  * Hook factory for performing bulk delete operations.
- * Generic TResource is removed here as it is not required for delete operations,
- * ensuring clean and warning-free code.
+ * This hook is non-generic as it only requires IDs for deletion.
  */
 export function createBulkDeleteHook(resourceName: string) {
   const pluralResourceName = capitalize(resourceName)
@@ -39,10 +38,10 @@ export function createBulkDeleteHook(resourceName: string) {
 
 /**
  * Hook factory for performing bulk update operations.
- * TResource is used as the response type to ensure strong typing 
- * and prevent unused generic warnings.
+ * FIX: Updated TResource constraint to { id?: string } to support 
+ * resources where the ID might be optional in their core schema.
  */
-export function createBulkUpdateHook<TResource extends { id: string }>(resourceName: string) {
+export function createBulkUpdateHook<TResource extends { id?: string }>(resourceName: string) {
   const pluralResourceName = capitalize(resourceName)
 
   return (): UseMutationResult<
@@ -55,8 +54,8 @@ export function createBulkUpdateHook<TResource extends { id: string }>(resourceN
 
     return useMutation({
       mutationFn: async ({ ids, data }) => {
-        /** * Using Record<string, unknown> for the data payload satisfies 
-         * ESLint rules while maintaining object-level type safety. 
+        /** * Using Record<string, unknown> for the data payload to 
+         * maintain type safety while adhering to ESLint rules. 
          */
         const response = await apiClient.patch<TResource[]>(resourceName, { ids, data })
         return response.data

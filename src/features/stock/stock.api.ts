@@ -1,3 +1,5 @@
+"use client"
+
 import { createApiHooksFor } from "@/lib/api-factory";
 import { createBulkDeleteHook, createBulkUpdateHook } from "@/lib/api-bulk-hooks";
 import type { Stock } from "./stock.schema";
@@ -36,7 +38,7 @@ export const useDeleteStock = stockApiHooks.useDelete;
 /**
  * Bulk operation hooks for inventory management.
  */
-export const useDeleteManyStocks = createBulkDeleteHook<Stock>("stock");
+export const useDeleteManyStocks = createBulkDeleteHook("stock");
 export const useUpdateManyStocks = createBulkUpdateHook<Stock>("stock");
 
 /**

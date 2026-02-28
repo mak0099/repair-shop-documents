@@ -14,10 +14,12 @@ const stockData = [
     brandName: "Apple",
     modelName: "iPhone 15 Pro",
     boxNumber: "B-01",
+    boxLocationName: "Section A, Rack 1",
     storageNote: "Top shelf, right side",
     status: "Ready for Sale",
-    condition: "New",
+    condition: "New" as const,
     sellingPrice: 145000,
+    purchasePrice: 130000,
   },
   {
     itemName: "Google Pixel 8",
@@ -32,10 +34,12 @@ const stockData = [
     brandName: "Google",
     modelName: "Pixel 8",
     boxNumber: "B-05",
+    boxLocationName: "Testing Lab",
     storageNote: "Drawer 2, near front",
     status: "In Testing",
-    condition: "Used",
+    condition: "Used" as const,
     sellingPrice: 65000,
+    purchasePrice: 55000,
   },
   {
     itemName: "Samsung Galaxy S23 Ultra",
@@ -50,10 +54,12 @@ const stockData = [
     brandName: "Samsung",
     modelName: "S23 Ultra",
     boxNumber: "B-02",
+    boxLocationName: "Display Center",
     storageNote: "Main display cabinet",
     status: "Ready for Sale",
-    condition: "Used",
+    condition: "Used" as const,
     sellingPrice: 98000,
+    purchasePrice: 82000,
   },
   {
     itemName: "OnePlus 11",
@@ -68,10 +74,12 @@ const stockData = [
     brandName: "OnePlus",
     modelName: "11 5G",
     boxNumber: "B-10",
+    boxLocationName: "Warehouse",
     storageNote: "Home stock / Warehouse",
     status: "Pending",
-    condition: "Used",
+    condition: "Used" as const,
     sellingPrice: 58000,
+    purchasePrice: 48000,
   }
 ];
 
@@ -80,6 +88,7 @@ const generateStocks = (count: number): Stock[] => {
   for (let i = 0; i < count; i++) {
     const stockInfo = stockData[i % stockData.length];
     const isDuplicate = i >= stockData.length;
+    const timestamp = new Date(Date.now() - (count - i) * 3600000).toISOString();
     
     stocks.push({
       id: `stk-${String(100 + i).padStart(3, '0')}`,
@@ -91,15 +100,20 @@ const generateStocks = (count: number): Stock[] => {
       brandName: stockInfo.brandName,
       modelName: stockInfo.modelName,
       boxNumber: stockInfo.boxNumber,
+      boxLocationName: stockInfo.boxLocationName,
       storageNote: stockInfo.storageNote,
       status: stockInfo.status,
-      condition: stockInfo.condition as "New" | "Used",
+      condition: stockInfo.condition,
       stockQuantity: Math.floor(Math.random() * 20),
       lowStockThreshold: 2,
       unit: "Pcs",
+      purchasePrice: stockInfo.purchasePrice,
       sellingPrice: stockInfo.sellingPrice,
       isActive: i % 10 !== 0,
-      lastUpdated: new Date(Date.now() - (count - i) * 3600000).toISOString(),
+      /**
+       * FIX: Renamed lastUpdated to updatedAt to match BaseEntity.
+       */
+      updatedAt: timestamp,
       createdAt: new Date(Date.now() - (count - i) * 86400000).toISOString(),
     });
   }

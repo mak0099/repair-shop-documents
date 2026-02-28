@@ -14,18 +14,26 @@ const generateStockAdjustments = (count: number): StockAdjustment[] => {
     
     const date = new Date();
     date.setDate(date.getDate() - i);
+    const timestamp = date.toISOString();
 
     return {
       id: `sa-${100 + i}`,
-      stockId: `stk-${1 + (i % 5)}`, // Linked to a specific stock unit
-      itemName: itemNames[i % 5],   // For UI display convenience
-      imei: imeis[i % 5],           // Mobile specific identifier
+      stockId: `stk-${1 + (i % 5)}`,
+      itemName: itemNames[i % 5],
+      imei: imeis[i % 5],
       type: typeOption.value as "IN" | "OUT",
-      quantity: 1, // Usually 1 for IMEI based adjustments
-      reason: reasonOption.value as any, // Syncs with updated constants
+      quantity: 1,
+      /**
+       * FIX: Using type casting to StockAdjustment['reason'] instead of 'any'
+       * to keep the code strictly typed.
+       */
+      reason: reasonOption.value as StockAdjustment['reason'],
       note: `Adjustment due to ${reasonOption.label}`,
       adjustedBy: "Admin User",
-      date: date.toISOString(),
+      date: timestamp,
+      // Adding missing BaseEntity properties
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
   });
 };

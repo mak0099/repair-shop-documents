@@ -9,10 +9,15 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function MasterSettingList() {
-  const { data: masters, isLoading, isFetching } = useMasterSettings()
+  /**
+   * masters is a PaginatedResponse, so we look for 'data' inside it.
+   */
+  const { data: mastersResponse, isLoading, isFetching } = useMasterSettings()
   const { openModal } = useMasterSettingModal()
 
-  // Futuristic Master Settings Keys
+  // Business Logic: Extract the actual array from pagination
+  const mastersList = mastersResponse?.data || []
+
   const systemMasters = [
     { label: "Device Type", key: "DEVICE_TYPE" },
     { label: "Payment Methods", key: "PAYMENT_METHOD" },
@@ -36,7 +41,10 @@ export function MasterSettingList() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {systemMasters.map((master) => {
-          const masterData = masters?.find((m) => m.key === master.key)
+          /**
+           * FIX: We now search within 'mastersList' (which is mastersResponse.data)
+           */
+          const masterData = mastersList.find((m) => m.key === master.key)
 
           return (
             <Card key={master.key} className="group border shadow-sm relative overflow-hidden transition-all duration-300">
@@ -67,7 +75,7 @@ export function MasterSettingList() {
                     Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-5 w-12 rounded-full" />)
                   ) : masterData?.values && masterData.values.length > 0 ? (
                     masterData.values.map((v, i) => (
-                      <Badge key={i} variant="outline" className="font-normal bg-white text-[10px]">
+                      <Badge key={i} variant="outline" className="font-normal bg-white text-[10px] border-slate-200 text-slate-600">
                         {v.value}
                       </Badge>
                     ))
@@ -79,7 +87,7 @@ export function MasterSettingList() {
                 <Button 
                   variant="outline"
                   disabled={isLoading || !masterData}
-                  className="w-full h-9 group-hover:bg-amber-600 group-hover:text-white transition-colors border-slate-300 text-xs" 
+                  className="w-full h-9 group-hover:bg-amber-600 group-hover:text-white transition-all border-slate-200 text-xs font-semibold shadow-sm active:scale-95" 
                   onClick={() => {
                     if (masterData) openModal({ initialData: masterData })
                   }}

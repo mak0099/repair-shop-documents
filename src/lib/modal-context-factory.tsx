@@ -35,8 +35,13 @@ interface ModalConfig {
   viewDescription?: string
 }
 
+/**
+ * Factory to create a specialized modal context for any feature.
+ * FIX: Changed T constraint from { id: string } to { id?: string } 
+ * to support resources where the ID might be optional (e.g., during creation).
+ */
 export function createModalContext<
-  T extends { id: string },
+  T extends { id?: string }, 
   O extends object = object,
 >(config: ModalConfig) {
   const {
@@ -59,10 +64,15 @@ export function createModalContext<
     const openModal = useCallback(
       (options?: BaseModalOptions<T> & O) => {
         const { initialData, onSuccess, isViewMode, ...rest } = options || {}
+        
+        /**
+         * Determines if we are in Edit mode based on the presence of initialData.
+         */
         const isEditMode = !!initialData && !isViewMode
 
         let title = addTitle
         let description = addDescription
+        
         if (isViewMode) {
           title = viewTitle
           description = viewDescription
@@ -98,12 +108,12 @@ export function createModalContext<
   }
 
   function useModal() {
+    const modalLogic = useModalLogic()
     const context = useContext(Context)
     if (context) {
       return context
     }
-    // Fallback for use outside of provider, useful for nested modals.
-    return useModalLogic()
+    return modalLogic
   }
 
   return { ModalProvider, useModal }
